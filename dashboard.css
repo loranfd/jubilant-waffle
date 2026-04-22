@@ -341,7 +341,13 @@ body {
 }
 
 .embudo-value.unavailable {
-  color: #94a3b8;
+  color: #9CA3AF;
+}
+
+.embudo-metric.metric-disabled {
+  opacity: 0.75;
+  background: #f8fafc;
+  border: 1px dashed #d1d5db;
 }
 
 .embudo-card h3 {
