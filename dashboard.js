@@ -812,8 +812,13 @@ function configurarEmbudo() {
       const tbody = document.querySelector('#tabla-comparacion tbody');
       if (!tbody) return;
       const tr = document.createElement('tr');
-      tr.innerHTML = '<td><input value="Campaña nueva"></td><td><input type="number" class="cmp-coste"></td><td><input type="number" class="cmp-form"></td><td class="cmp-cpl">0.00</td>';
+      tr.innerHTML = '<td><input value="Campaña nueva"></td><td><input type="number" class="cmp-coste"></td><td><input type="date" class="cmp-fecha-inicio"></td><td><input type="date" class="cmp-fecha-fin"></td><td class="cmp-form">0</td><td class="cmp-cpl">0.00</td>';
       tbody.appendChild(tr);
+      tr.querySelectorAll('input').forEach((input) => {
+        input.addEventListener('input', calcularEmbudo);
+        input.addEventListener('change', calcularEmbudo);
+      });
+      calcularEmbudo();
     });
   }
 
@@ -831,6 +836,11 @@ function configurarEmbudo() {
     if (!el) return;
     el.addEventListener('input', calcularEmbudo);
     el.addEventListener('change', calcularEmbudo);
+  });
+
+  document.querySelectorAll('#tabla-comparacion input').forEach((input) => {
+    input.addEventListener('input', calcularEmbudo);
+    input.addEventListener('change', calcularEmbudo);
   });
 
   calcularEmbudo();
@@ -868,6 +878,66 @@ function parseOptionalNumber(id) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function getContactosFiltradosPorRango(dataCompleta, fechaInicio, fechaFin, categoriaFiltro) {
+  if (!fechaInicio || !fechaFin) return [];
+  const inicio = new Date(fechaInicio + 'T00:00:00');
+  const fin = new Date(fechaFin + 'T23:59:59');
+  return (dataCompleta || []).filter(c => {
+    if (!c['Fecha']) return false;
+    const fecha = /^\d{4}-\d{2}-\d{2}$/.test(String(c['Fecha']).trim())
+      ? new Date(String(c['Fecha']).trim() + 'T00:00:00')
+      : new Date(c['Fecha']);
+    if (isNaN(fecha) || fecha < inicio || fecha > fin) return false;
+    if (categoriaFiltro === 'all') return true;
+    const categoria = CategoriaSystem.resolveCategoria(appConfig, c);
+    return categoria?.id === categoriaFiltro;
+  });
+}
+
+function formatTrend(delta) {
+  if (delta > 0.12) return 'mejora';
+  if (delta < -0.12) return 'empeora';
+  return 'estable';
+}
+
+function trendFromSeries(series) {
+  if (!Array.isArray(series) || series.length < 4) return 'estable';
+  const half = Math.floor(series.length / 2);
+  const first = series.slice(0, half);
+  const second = series.slice(half);
+  const avg = arr => arr.reduce((a, b) => a + b, 0) / (arr.length || 1);
+  const firstAvg = avg(first);
+  const secondAvg = avg(second);
+  if (firstAvg === 0 && secondAvg === 0) return 'estable';
+  const delta = firstAvg === 0 ? 1 : (secondAvg - firstAvg) / firstAvg;
+  return formatTrend(delta);
+}
+
+function getDailyLeads(fechaInicio, fechaFin, contactosEnRango) {
+  if (!fechaInicio || !fechaFin) return [];
+  const start = new Date(fechaInicio + 'T00:00:00');
+  const end = new Date(fechaFin + 'T00:00:00');
+  if (isNaN(start) || isNaN(end) || end < start) return [];
+
+  const leadsByDay = new Map();
+  (contactosEnRango || []).forEach(c => {
+    const raw = String(c['Fecha'] || '').trim();
+    const d = /^\d{4}-\d{2}-\d{2}$/.test(raw) ? new Date(raw + 'T00:00:00') : new Date(raw);
+    if (isNaN(d)) return;
+    const key = d.toISOString().split('T')[0];
+    leadsByDay.set(key, (leadsByDay.get(key) || 0) + 1);
+  });
+
+  const days = [];
+  const cursor = new Date(start);
+  while (cursor <= end) {
+    const key = cursor.toISOString().split('T')[0];
+    days.push({ key, leads: leadsByDay.get(key) || 0 });
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return days;
+}
+
 function calcularEmbudo() {
   const clics = parseOptionalNumber('input-clics');
   const coste = parseOptionalNumber('input-coste');
@@ -878,20 +948,7 @@ function calcularEmbudo() {
   if (!datosGlobales) {
     return;
   }
-  const contactosEnRango = (!fechaInicio || !finVal)
-    ? []
-    : (datosGlobales.dataCompleta || []).filter(c => {
-        if (!c['Fecha']) return false;
-        const fecha = /^\d{4}-\d{2}-\d{2}$/.test(String(c['Fecha']).trim())
-          ? new Date(String(c['Fecha']).trim() + 'T00:00:00')
-          : new Date(c['Fecha']);
-        const inicio = new Date(fechaInicio + 'T00:00:00');
-        const fin = new Date(finVal + 'T23:59:59');
-        if (isNaN(fecha) || fecha < inicio || fecha > fin) return false;
-        if (categoriaFiltro === 'all') return true;
-        const categoria = CategoriaSystem.resolveCategoria(appConfig, c);
-        return categoria?.id === categoriaFiltro;
-      });
+  const contactosEnRango = getContactosFiltradosPorRango(datosGlobales.dataCompleta, fechaInicio, finVal, categoriaFiltro);
 
   const formularios = contactosEnRango.length;
   document.getElementById('input-formularios').value = formularios;
@@ -920,27 +977,81 @@ function calcularEmbudo() {
   const cpl = safeCalculate(() => coste / formularios, [coste, formularios]);
   const ctrCalc = safeCalculate(() => (clicsResumen / impresionesResumen) * 100, [clicsResumen, impresionesResumen]);
   const clicsPorFormulario = safeCalculate(() => clicsResumen / formularios, [clicsResumen, formularios]);
-  const impresionesPorFormulario = safeCalculate(() => impresionesResumen / formularios, [impresionesResumen, formularios]);
+  const costePorLeadDesdeClic = safeCalculate(() => coste / formularios, [coste, formularios]);
 
   setMetricValue('res-cpc', cpc);
   setMetricValue('res-conv', conv, '%');
   setMetricValue('res-cpl', cpl, '€');
   setMetricValue('res-ctr', ctrCalc, '%');
-  setMetricValue('res-clics-formulario', clicsPorFormulario);
-  setMetricValue('res-adv-ipf', impresionesPorFormulario);
+  setMetricValue('res-coste-lead-click', costePorLeadDesdeClic, '€');
 
-  const advancedMetrics = document.getElementById('advanced-metrics');
-  const advancedEmpty = document.getElementById('advanced-empty');
-  const advancedHasData = impresionesPorFormulario !== null;
-  if (advancedMetrics) advancedMetrics.style.display = advancedHasData ? 'grid' : 'none';
-  if (advancedEmpty) {
-    advancedEmpty.textContent = '';
+  // Rendimiento diario
+  const dailyLeads = getDailyLeads(fechaInicio, finVal, contactosEnRango);
+  const diasCampania = dailyLeads.length || null;
+  const clicsDia = safeCalculate(() => clicsResumen / diasCampania, [clicsResumen, diasCampania]);
+  const impresionesDia = safeCalculate(() => impresionesResumen / diasCampania, [impresionesResumen, diasCampania]);
+  const costeDia = safeCalculate(() => coste / diasCampania, [coste, diasCampania]);
+  const leadsDia = safeCalculate(() => formularios / diasCampania, [formularios, diasCampania]);
+  const cpcDia = safeCalculate(() => costeDia / clicsDia, [costeDia, clicsDia]);
+  const ctrDia = safeCalculate(() => (clicsDia / impresionesDia) * 100, [clicsDia, impresionesDia]);
+  const convDia = safeCalculate(() => (leadsDia / clicsDia) * 100, [leadsDia, clicsDia]);
+  const cplDia = safeCalculate(() => costeDia / leadsDia, [costeDia, leadsDia]);
+
+  setMetricValue('res-dia-clics', clicsDia);
+  setMetricValue('res-dia-impresiones', impresionesDia);
+  setMetricValue('res-dia-coste', costeDia, '€');
+  setMetricValue('res-dia-leads', leadsDia);
+  setMetricValue('res-dia-cpc', cpcDia, '€');
+  setMetricValue('res-dia-ctr', ctrDia, '%');
+  setMetricValue('res-dia-conv', convDia, '%');
+  setMetricValue('res-dia-cpl', cplDia, '€');
+
+  const leadsSeries = dailyLeads.map(d => d.leads);
+  const trendLeads = trendFromSeries(leadsSeries);
+  const trendCtr = ctrDia === null ? '' : 'estable';
+  const trendCpc = cpcDia === null ? '' : 'estable';
+  const trendConv = trendLeads;
+  const trendCpl = trendLeads === 'mejora' ? 'mejora' : (trendLeads === 'empeora' ? 'empeora' : 'estable');
+
+  const kpiMessage = {
+    ctr: ctrDia === null ? '' : (ctrDia < 1 ? '🔴 El anuncio no está captando atención diaria' : (ctrDia < 2 ? '🟠 Atención mejorable, optimizar creatividades' : (ctrDia <= 4 ? '🟢 CTR correcto y estable' : '🔥 Anuncio muy atractivo diariamente'))),
+    conv: convDia === null ? '' : (convDia < 1 ? '🔴 La landing no convierte de forma consistente' : (convDia < 2 ? '🟠 Conversión baja diaria, revisar formulario o mensaje' : (convDia <= 5 ? '🟢 Conversión correcta y estable' : '🔥 Landing muy optimizada en el tiempo'))),
+    cpc: cpcDia === null ? '' : (cpcDia < 0.10 ? '🔥 Tráfico extremadamente barato sostenido' : (cpcDia < 0.30 ? '🟢 Clic eficiente de forma estable' : (cpcDia <= 0.80 ? '🟠 CPC medio, optimización posible' : '🔴 Clic caro sostenido en el tiempo'))),
+    cpl: cplDia === null ? '' : (cplDia < 15 ? '🔥 Captación muy eficiente y estable' : (cplDia < 35 ? '🟢 Coste controlado diario' : (cplDia < 60 ? '🟠 Lead caro de forma sostenida' : '🔴 Campaña no rentable en el tiempo'))),
+    calidad: clicsPorFormulario === null ? '' : (clicsPorFormulario < 20 ? '🔥 Tráfico muy cualificado de forma constante' : (clicsPorFormulario <= 40 ? '🟢 Buen tráfico diario' : (clicsPorFormulario <= 100 ? '🟠 Calidad media estable' : '🔴 Tráfico poco cualificado sostenido')))
+  };
+
+  let combinado = '';
+  if (ctrDia !== null && convDia !== null) {
+    if (ctrDia < 2 && convDia < 2) combinado = '🔴 Problema estructural diario en embudo';
+    else if (ctrDia >= 2 && convDia < 2) combinado = '🔴 Anuncio funciona, landing falla';
+    else if (ctrDia < 2 && convDia >= 2) combinado = '🔴 Buen producto pero anuncio débil';
+    else if (ctrDia > 4 && convDia > 5) combinado = '🔥 Campaña altamente optimizada diaria';
+    else combinado = '🟢 Embudo equilibrado en el tiempo';
+  }
+
+  const dailyInsights = document.getElementById('daily-insights');
+  if (dailyInsights) {
+    const lines = [
+      kpiMessage.ctr ? `${kpiMessage.ctr} · Tendencia: ${trendCtr}` : '',
+      kpiMessage.conv ? `${kpiMessage.conv} · Tendencia: ${trendConv}` : '',
+      kpiMessage.cpc ? `${kpiMessage.cpc} · Tendencia: ${trendCpc}` : '',
+      kpiMessage.cpl ? `${kpiMessage.cpl} · Tendencia: ${trendCpl}` : '',
+      kpiMessage.calidad,
+      combinado,
+      'Prioridad de decisión: tendencia diaria (mejora / empeora / estable).'
+    ].filter(Boolean);
+    dailyInsights.innerHTML = lines.map(l => `<div>${l}</div>`).join('');
   }
 
   const filasComparacion = [...document.querySelectorAll('#tabla-comparacion tbody tr')];
   filasComparacion.forEach(row => {
     const costeRow = Number(row.querySelector('.cmp-coste')?.value);
-    const formRow = Number(row.querySelector('.cmp-form')?.value);
+    const fechaInicioRow = row.querySelector('.cmp-fecha-inicio')?.value || '';
+    const fechaFinRow = row.querySelector('.cmp-fecha-fin')?.value || '';
+    const formRow = getContactosFiltradosPorRango(datosGlobales.dataCompleta, fechaInicioRow, fechaFinRow, categoriaFiltro).length;
+    const formCell = row.querySelector('.cmp-form');
+    if (formCell) formCell.textContent = formRow;
     const cplRow = safeCalculate(() => costeRow / formRow, [costeRow, formRow]);
     row.querySelector('.cmp-cpl').textContent = cplRow === null ? 'N/D' : cplRow.toFixed(2);
   });
@@ -953,20 +1064,18 @@ function calcularEmbudo() {
     })
     .forEach(row => tbodyComparacion?.appendChild(row));
 
-  const diagAnuncio = ctrCalc === null
+  const diagAnuncio = ctrDia === null
     ? ''
-    : (ctrCalc < 1.5 ? 'El anuncio puede no estar siendo atractivo' : 'El CTR es saludable');
-  const diagTrafico = conv === null
+    : `CTR diario ${trendCtr}: ${kpiMessage.ctr.replace(/^[^\s]+\s/, '')}`;
+  const diagTrafico = convDia === null
     ? ''
-    : (conv < 3 ? 'Revisar la landing o la segmentación' : 'La calidad del tráfico es correcta');
-  const diagRent = cpl === null
+    : `Conversión diaria ${trendConv}: ${kpiMessage.conv.replace(/^[^\s]+\s/, '')}`;
+  const diagRent = cplDia === null
     ? ''
-    : (cpl > 50 ? 'Coste por contacto elevado' : 'Coste por contacto controlado');
+    : `CPL diario ${trendCpl}: ${kpiMessage.cpl.replace(/^[^\s]+\s/, '')}`;
   document.getElementById('diag-anuncio').textContent = diagAnuncio;
   document.getElementById('diag-trafico').textContent = diagTrafico;
   document.getElementById('diag-rent').textContent = diagRent;
-  const rentabilidadStatus = document.getElementById('res-rentabilidad-status');
-  if (rentabilidadStatus) rentabilidadStatus.textContent = diagRent;
 }
 
 
