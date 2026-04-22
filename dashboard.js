@@ -5,6 +5,7 @@ const urlApi = 'https://script.google.com/macros/s/AKfycbzhw3QMxMyVBuSzbabj8wPc5
 let datosGlobales = null;
 let datosFiltrados = null;
 let datosCompletos = null;
+let campañasGuardadas = [];
 let appConfig = CategoriaSystem.getDefaultAppConfig();
 
 // Tooltip div global
@@ -96,6 +97,7 @@ async function cargarDatos() {
       datosGlobales = procesarDatos(datosCompletos);
       datosFiltrados = datosCompletos;
       configurarEmbudo();
+      await cargarCampaniasGuardadas();
       poblarMeses(datosCompletos);
       mostrarDashboard();
     } else {
@@ -795,7 +797,7 @@ function mostrarMapaUbicaciones() {
 
 function configurarEmbudo() {
   const selectCategoria = document.getElementById('embudo-categoria');
-  const btnAddCampania = document.getElementById('btn-add-campania');
+  const btnGuardarCampania = document.getElementById('btn-guardar-campania');
 
   if (selectCategoria) {
     selectCategoria.innerHTML = '<option value="all">Todo</option>';
@@ -807,19 +809,8 @@ function configurarEmbudo() {
     });
   }
 
-  if (btnAddCampania) {
-    btnAddCampania.addEventListener('click', () => {
-      const tbody = document.querySelector('#tabla-comparacion tbody');
-      if (!tbody) return;
-      const tr = document.createElement('tr');
-      tr.innerHTML = '<td><input value="Campaña nueva"></td><td><input type="number" class="cmp-coste"></td><td><input type="date" class="cmp-fecha-inicio"></td><td><input type="date" class="cmp-fecha-fin"></td><td class="cmp-form">0</td><td class="cmp-cpl">0.00</td>';
-      tbody.appendChild(tr);
-      tr.querySelectorAll('input').forEach((input) => {
-        input.addEventListener('input', calcularEmbudo);
-        input.addEventListener('change', calcularEmbudo);
-      });
-      calcularEmbudo();
-    });
+  if (btnGuardarCampania) {
+    btnGuardarCampania.addEventListener('click', guardarCampaña);
   }
 
   const embudoInputs = [
@@ -836,11 +827,6 @@ function configurarEmbudo() {
     if (!el) return;
     el.addEventListener('input', calcularEmbudo);
     el.addEventListener('change', calcularEmbudo);
-  });
-
-  document.querySelectorAll('#tabla-comparacion input').forEach((input) => {
-    input.addEventListener('input', calcularEmbudo);
-    input.addEventListener('change', calcularEmbudo);
   });
 
   calcularEmbudo();
@@ -919,6 +905,148 @@ function getDailyLeads(fechaInicio, fechaFin, contactosEnRango) {
   return days;
 }
 
+function normalizarCampaniaRow(row) {
+  return {
+    id: String(row.id || ''),
+    nombre: String(row.nombre || row.nombreCampania || ''),
+    fechaInicio: String(row.fechaInicio || ''),
+    fechaFin: String(row.fechaFin || ''),
+    clics: Number(row.clics || 0),
+    impresiones: Number(row.impresiones || 0),
+    coste: Number(row.coste || 0),
+    leads: Number(row.leads || 0),
+    ctr: Number(row.ctr || 0),
+    cpc: Number(row.cpc || 0),
+    cpl: Number(row.cpl || 0),
+    conversion: Number(row.conversion || 0),
+    diasCampania: Number(row.diasCampania || 0),
+    clicsDia: Number(row.clicsDia || 0),
+    impresionesDia: Number(row.impresionesDia || 0),
+    costeDia: Number(row.costeDia || 0),
+    leadsDia: Number(row.leadsDia || 0),
+    timestamp: String(row.timestamp || '')
+  };
+}
+
+function renderCampaniasEnComparacion() {
+  const tbody = document.querySelector('#tabla-comparacion tbody');
+  if (!tbody) return;
+  const rows = [...campañasGuardadas].sort((a, b) => {
+    const av = Number.isFinite(a.cpl) ? a.cpl : Number.POSITIVE_INFINITY;
+    const bv = Number.isFinite(b.cpl) ? b.cpl : Number.POSITIVE_INFINITY;
+    return av - bv;
+  });
+
+  tbody.innerHTML = rows.map(c => `
+    <tr>
+      <td>${c.nombre || 'Campaña'}</td>
+      <td>${c.fechaInicio || ''}</td>
+      <td>${c.fechaFin || ''}</td>
+      <td>${Number.isFinite(c.clics) ? c.clics.toFixed(0) : ''}</td>
+      <td>${Number.isFinite(c.impresiones) ? c.impresiones.toFixed(0) : ''}</td>
+      <td>${Number.isFinite(c.coste) ? c.coste.toFixed(2) : ''}</td>
+      <td>${Number.isFinite(c.leads) ? c.leads.toFixed(0) : ''}</td>
+      <td>${Number.isFinite(c.cpl) ? c.cpl.toFixed(2) : ''}</td>
+    </tr>
+  `).join('');
+
+  const resumen = document.getElementById('comparacion-resumen');
+  if (resumen) {
+    if (rows.length >= 2) {
+      resumen.textContent = `${rows[0].nombre} es la campaña con mejor CPL en histórico.`;
+    } else if (rows.length === 1) {
+      resumen.textContent = `Hay 1 campaña guardada: ${rows[0].nombre}.`;
+    } else {
+      resumen.textContent = 'Aún no hay campañas guardadas en Hoja 3.';
+    }
+  }
+}
+
+async function cargarCampaniasGuardadas() {
+  try {
+    const response = await fetch(`${urlApi}?action=getCampaigns`);
+    const result = await response.json();
+    if (result.status === 'success' && Array.isArray(result.data)) {
+      campañasGuardadas = result.data.map(normalizarCampaniaRow);
+      renderCampaniasEnComparacion();
+    }
+  } catch (error) {
+    console.error('Error al cargar campañas guardadas:', error);
+  }
+}
+
+async function guardarCampaña() {
+  const nombre = String(document.getElementById('camp-nombre')?.value || '').trim();
+  const fechaInicio = String(document.getElementById('camp-fecha-inicio')?.value || '').trim();
+  const fechaFin = String(document.getElementById('camp-fecha-fin')?.value || '').trim();
+  const clics = Number(document.getElementById('camp-clics')?.value || '');
+  const impresiones = Number(document.getElementById('camp-impresiones')?.value || '');
+  const coste = Number(document.getElementById('camp-coste')?.value || '');
+  const leads = Number(document.getElementById('camp-leads')?.value || '');
+  const msg = document.getElementById('guardar-campania-msg');
+
+  const invalidBase = !nombre || !fechaInicio || !fechaFin || !Number.isFinite(clics) || !Number.isFinite(impresiones) || !Number.isFinite(coste) || !Number.isFinite(leads);
+  const invalidNums = [clics, impresiones, coste, leads].some(v => v < 0);
+  const dInicio = new Date(fechaInicio + 'T00:00:00');
+  const dFin = new Date(fechaFin + 'T00:00:00');
+  if (invalidBase || invalidNums || isNaN(dInicio) || isNaN(dFin) || dInicio >= dFin) {
+    if (msg) msg.textContent = 'Revisa los campos: obligatorios completos, números válidos >= 0 y fecha inicio menor que fecha fin.';
+    return;
+  }
+
+  const unDia = 1000 * 60 * 60 * 24;
+  const diasCampania = Math.floor((dFin - dInicio) / unDia) + 1;
+  const ctr = safeCalculate(() => (clics / impresiones) * 100, [clics, impresiones]);
+  const cpc = safeCalculate(() => coste / clics, [coste, clics]);
+  const cpl = safeCalculate(() => coste / leads, [coste, leads]);
+  const conversion = safeCalculate(() => (leads / clics) * 100, [leads, clics]);
+  const clicsDia = safeCalculate(() => clics / diasCampania, [clics, diasCampania]);
+  const impresionesDia = safeCalculate(() => impresiones / diasCampania, [impresiones, diasCampania]);
+  const costeDia = safeCalculate(() => coste / diasCampania, [coste, diasCampania]);
+  const leadsDia = safeCalculate(() => leads / diasCampania, [leads, diasCampania]);
+
+  const campaña = {
+    action: 'saveCampaign',
+    campaign: {
+      id: `camp_${Date.now()}_${Math.floor(Math.random() * 10000)}`,
+      nombre,
+      fechaInicio,
+      fechaFin,
+      clics,
+      impresiones,
+      coste,
+      leads,
+      ctr: ctr ?? 0,
+      cpc: cpc ?? 0,
+      cpl: cpl ?? 0,
+      conversion: conversion ?? 0,
+      diasCampania,
+      clicsDia: clicsDia ?? 0,
+      impresionesDia: impresionesDia ?? 0,
+      costeDia: costeDia ?? 0,
+      leadsDia: leadsDia ?? 0,
+      timestamp: new Date().toISOString()
+    }
+  };
+
+  try {
+    const response = await fetch(urlApi, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(campaña)
+    });
+    const result = await response.json();
+    if (result.status !== 'success') {
+      throw new Error(result.message || 'No se pudo guardar campaña');
+    }
+    if (msg) msg.textContent = 'Campaña guardada correctamente en Hoja 3.';
+    await cargarCampaniasGuardadas();
+  } catch (error) {
+    console.error('Error al guardar campaña:', error);
+    if (msg) msg.textContent = 'Error al guardar campaña en Google Sheets.';
+  }
+}
+
 function calcularEmbudo() {
   const clics = parseOptionalNumber('input-clics');
   const coste = parseOptionalNumber('input-coste');
@@ -979,36 +1107,7 @@ function calcularEmbudo() {
     else combinado = '🟢 Embudo equilibrado en el tiempo';
   }
 
-  const filasComparacion = [...document.querySelectorAll('#tabla-comparacion tbody tr')];
-  filasComparacion.forEach(row => {
-    const costeRow = Number(row.querySelector('.cmp-coste')?.value);
-    const fechaInicioRow = row.querySelector('.cmp-fecha-inicio')?.value || '';
-    const fechaFinRow = row.querySelector('.cmp-fecha-fin')?.value || '';
-    const formRow = getContactosFiltradosPorRango(datosGlobales.dataCompleta, fechaInicioRow, fechaFinRow, categoriaFiltro).length;
-    const formCell = row.querySelector('.cmp-form');
-    if (formCell) formCell.textContent = formRow;
-    const cplRow = safeCalculate(() => costeRow / formRow, [costeRow, formRow]);
-    row.querySelector('.cmp-cpl').textContent = cplRow === null ? 'N/D' : cplRow.toFixed(2);
-  });
-  const comparacionResumen = document.getElementById('comparacion-resumen');
-  const candidatas = filasComparacion
-    .map(row => {
-      const nombre = row.querySelector('td input')?.value?.trim() || 'Campaña';
-      const cplText = row.querySelector('.cmp-cpl')?.textContent || 'N/D';
-      const cplNum = parseFloat(cplText);
-      return { nombre, cplNum: Number.isFinite(cplNum) ? cplNum : null };
-    })
-    .filter(c => c.cplNum !== null);
-  if (comparacionResumen) {
-    if (candidatas.length >= 2) {
-      candidatas.sort((a, b) => a.cplNum - b.cplNum);
-      const mejor = candidatas[0];
-      const peor = candidatas[candidatas.length - 1];
-      comparacionResumen.textContent = `${mejor.nombre} tiene mejor eficiencia de captación que ${peor.nombre} en los datos actuales.`;
-    } else {
-      comparacionResumen.textContent = '';
-    }
-  }
+  renderCampaniasEnComparacion();
 
   document.getElementById('diag-ctr').textContent = kpiMessage.ctr;
   document.getElementById('diag-conv').textContent = kpiMessage.conv;
