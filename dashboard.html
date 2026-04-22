@@ -157,6 +157,18 @@
     </div>
   </details>
 
+  <details class="metric-block bg-compare">
+    <summary>💾 GUARDAR CAMPAÑA</summary>
+    <div class="metric-body">
+      <div class="embudo-inputs">
+        <div class="input-group"><label>Nombre campaña</label><input type="text" id="camp-nombre" placeholder="Ej: Meta Abril"></div>
+      </div>
+      <button id="btn-guardar-campania" class="metric-btn">Guardar en histórico</button>
+      <p class="metric-help">Usa exactamente los datos ya calculados en 🟢 RESUMEN DE CAMPAÑA (fechas, clics, impresiones, coste y formularios).</p>
+      <p class="metric-help" id="guardar-campania-msg"></p>
+    </div>
+  </details>
+
   <div class="metric-row-two">
     <details class="metric-block bg-attraction" open>
       <summary>👉 🟡 ANUNCIO (ATRACCIÓN)</summary>
@@ -192,25 +204,13 @@
   </details>
 
   <details class="metric-block bg-compare">
-    <summary>➕ CREAR + GUARDAR CAMPAÑA</summary>
-    <div class="metric-body">
-      <div class="embudo-inputs">
-        <div class="input-group"><label>Nombre campaña</label><input type="text" id="camp-nombre" placeholder="Ej: Meta Abril"></div>
-      </div>
-      <button id="btn-guardar-campania" class="metric-btn">👉 guardarCampaña()</button>
-      <p class="metric-help">Usa exactamente los datos ya calculados en 🟢 RESUMEN DE CAMPAÑA (fechas, clics, impresiones, coste y formularios).</p>
-      <p class="metric-help" id="guardar-campania-msg"></p>
-    </div>
-  </details>
-
-  <details class="metric-block bg-compare">
     <summary>🧩 🔥 COMPARACIÓN</summary>
     <div class="metric-body">
       <table id="tabla-comparacion" class="tabla-comparacion">
-        <thead><tr><th>Campaña</th><th>Inicio</th><th>Fin</th><th>Clics</th><th>Impresiones</th><th>Coste (€)</th><th>Leads</th><th>CPL (€)</th></tr></thead>
+        <thead><tr><th>Campaña</th><th>Inicio</th><th>Fin</th><th>Clics</th><th>Impresiones</th><th>Coste</th><th>Clientes</th><th>CPL</th></tr></thead>
         <tbody></tbody>
       </table>
-      <p class="metric-help">Campañas cargadas automáticamente desde Google Sheets (Hoja 3), ordenadas por CPL (mejor → peor).</p>
+      <p class="metric-help">Campañas guardadas y ordenadas por CPL (mejor → peor).</p>
       <p class="metric-help" id="comparacion-resumen"></p>
     </div>
   </details>

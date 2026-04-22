@@ -899,6 +899,12 @@ function normalizarCampaniaRow(row) {
 function renderCampaniasEnComparacion() {
   const tbody = document.querySelector('#tabla-comparacion tbody');
   if (!tbody) return;
+  const formatDateEs = (value) => {
+    if (!value) return '';
+    const d = /^\d{4}-\d{2}-\d{2}$/.test(String(value)) ? new Date(`${value}T00:00:00`) : new Date(value);
+    if (isNaN(d)) return String(value);
+    return d.toLocaleDateString('es-ES');
+  };
   const rows = [...campañasGuardadas].sort((a, b) => {
     const av = Number.isFinite(a.cpl) ? a.cpl : Number.POSITIVE_INFINITY;
     const bv = Number.isFinite(b.cpl) ? b.cpl : Number.POSITIVE_INFINITY;
@@ -908,13 +914,13 @@ function renderCampaniasEnComparacion() {
   tbody.innerHTML = rows.map(c => `
     <tr>
       <td>${c.nombre || 'Campaña'}</td>
-      <td>${c.fechaInicio || ''}</td>
-      <td>${c.fechaFin || ''}</td>
+      <td>${formatDateEs(c.fechaInicio)}</td>
+      <td>${formatDateEs(c.fechaFin)}</td>
       <td>${Number.isFinite(c.clics) ? c.clics.toFixed(0) : ''}</td>
       <td>${Number.isFinite(c.impresiones) ? c.impresiones.toFixed(0) : ''}</td>
-      <td>${Number.isFinite(c.coste) ? c.coste.toFixed(2) : ''}</td>
+      <td>${Number.isFinite(c.coste) ? `${c.coste.toFixed(2)} €` : ''}</td>
       <td>${Number.isFinite(c.leads) ? c.leads.toFixed(0) : ''}</td>
-      <td>${Number.isFinite(c.cpl) ? c.cpl.toFixed(2) : ''}</td>
+      <td>${Number.isFinite(c.cpl) ? `${c.cpl.toFixed(2)} €` : ''}</td>
     </tr>
   `).join('');
 
@@ -944,6 +950,7 @@ async function cargarCampaniasGuardadas() {
 }
 
 async function guardarCampaña() {
+  const btnGuardar = document.getElementById('btn-guardar-campania');
   const nombre = String(document.getElementById('camp-nombre')?.value || '').trim();
   const fechaInicio = String(document.getElementById('input-fecha-inicio')?.value || '').trim();
   const fechaFin = String(document.getElementById('input-fecha-fin')?.value || '').trim();
@@ -1006,6 +1013,10 @@ async function guardarCampaña() {
   };
 
   try {
+    if (btnGuardar) {
+      btnGuardar.classList.add('loading');
+      btnGuardar.disabled = true;
+    }
     const body = new URLSearchParams();
     body.set('action', 'saveCampaign');
     body.set('campaign', JSON.stringify(campaña.campaign));
@@ -1017,11 +1028,16 @@ async function guardarCampaña() {
     if (result.status !== 'success') {
       throw new Error(result.message || 'No se pudo guardar campaña');
     }
-    if (msg) msg.textContent = 'Campaña guardada correctamente en Hoja 3.';
+    if (msg) msg.textContent = 'Campaña guardada correctamente.';
     await cargarCampaniasGuardadas();
   } catch (error) {
     console.error('Error al guardar campaña:', error);
-    if (msg) msg.textContent = 'Error al guardar campaña en Google Sheets.';
+    if (msg) msg.textContent = 'Error al guardar campaña.';
+  } finally {
+    if (btnGuardar) {
+      btnGuardar.classList.remove('loading');
+      btnGuardar.disabled = false;
+    }
   }
 }
 
