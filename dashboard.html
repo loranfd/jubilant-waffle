@@ -136,18 +136,22 @@
           <input type="number" id="input-clics" placeholder="Ej: 1000">
         </div>
         <div class="input-group">
+          <label>Impresiones</label>
+          <input type="number" id="input-impresiones" placeholder="Ej: 50000">
+        </div>
+        <div class="input-group">
           <label>Coste Total (€)</label>
           <input type="number" step="0.01" id="input-coste" placeholder="Ej: 500">
         </div>
         <div class="input-group">
-          <label>Formularios (auto)</label>
+          <label>Formularios/Clientes (auto)</label>
           <input type="number" id="input-formularios" readonly>
         </div>
       </div>
       <div class="embudo-resultados">
-        <div class="embudo-metric"><p class="embudo-label">💰 Coste por contacto</p><p class="embudo-value" id="res-cpl">Información no disponible</p></div>
-        <div class="embudo-metric"><p class="embudo-label">📈 Conversión (%)</p><p class="embudo-value" id="res-conv">Información no disponible</p></div>
-        <div class="embudo-metric"><p class="embudo-label">💸 CPC</p><p class="embudo-value" id="res-cpc">Información no disponible</p></div>
+        <div class="embudo-metric"><p class="embudo-label">💰 Coste por contacto</p><p class="embudo-value" id="res-cpl"></p></div>
+        <div class="embudo-metric"><p class="embudo-label">📈 Conversión (%)</p><p class="embudo-value" id="res-conv"></p></div>
+        <div class="embudo-metric"><p class="embudo-label">💸 CPC</p><p class="embudo-value" id="res-cpc"></p></div>
       </div>
       <p class="metric-help">Vista principal, limpia y rápida para analizar la campaña.</p>
     </div>
@@ -157,13 +161,11 @@
     <summary>👉 🟡 ANUNCIO (ATRACCIÓN)</summary>
     <div class="metric-body">
       <div class="embudo-inputs">
-        <div class="input-group"><label>Impresiones</label><input type="number" id="input-impresiones"></div>
-        <div class="input-group"><label>Clics</label><input type="number" id="input-clics-atr"></div>
-        <div class="input-group" id="group-interacciones"><label>Interacciones (opcional)</label><input type="number" id="input-interacciones"></div>
+        <div class="input-group"><label>Impresiones (desde resumen)</label><input type="number" id="input-impresiones-atr" readonly></div>
+        <div class="input-group"><label>Clics (desde resumen)</label><input type="number" id="input-clics-atr" readonly></div>
       </div>
       <div class="embudo-resultados">
-        <div class="embudo-metric"><p class="embudo-label">CTR (%)</p><p class="embudo-value" id="res-ctr">Información no disponible</p></div>
-        <div class="embudo-metric" id="metric-eng"><p class="embudo-label">Engagement (%)</p><p class="embudo-value" id="res-eng">Información no disponible</p></div>
+        <div class="embudo-metric"><p class="embudo-label">CTR (%)</p><p class="embudo-value" id="res-ctr"></p></div>
       </div>
       <p class="metric-help">👉 Mide si el anuncio llama la atención.</p>
     </div>
@@ -173,8 +175,7 @@
     <summary>👉 🔵 TRÁFICO (CALIDAD)</summary>
     <div class="metric-body">
       <div class="embudo-resultados">
-        <div class="embudo-metric"><p class="embudo-label">Conversión (%)</p><p class="embudo-value" id="res-calidad-conv">Información no disponible</p></div>
-        <div class="embudo-metric"><p class="embudo-label">Clics por formulario</p><p class="embudo-value" id="res-clics-formulario">Información no disponible</p></div>
+        <div class="embudo-metric"><p class="embudo-label">Clics por formulario</p><p class="embudo-value" id="res-clics-formulario"></p></div>
       </div>
       <p class="metric-help">Mide la calidad del tráfico que llega a formulario.</p>
     </div>
@@ -183,9 +184,7 @@
   <details class="metric-block bg-profit">
     <summary>👉 🟣 RENTABILIDAD</summary>
     <div class="metric-body">
-      <div class="embudo-resultados">
-        <div class="embudo-metric"><p class="embudo-label">Coste por contacto (€)</p><p class="embudo-value" id="res-rent-cpl">Información no disponible</p></div>
-      </div>
+      <p class="embudo-value" id="res-rentabilidad-status"></p>
       <p class="metric-help">Ideal para comparar campañas y ver rentabilidad real.</p>
     </div>
   </details>
@@ -194,11 +193,9 @@
     <summary>⚙️ ANÁLISIS AVANZADO</summary>
     <div class="metric-body">
       <div class="embudo-resultados" id="advanced-metrics">
-        <div class="embudo-metric"><p class="embudo-label">CTR (%)</p><p class="embudo-value" id="res-adv-ctr">Información no disponible</p></div>
-        <div class="embudo-metric"><p class="embudo-label">Engagement (%)</p><p class="embudo-value" id="res-adv-eng">Información no disponible</p></div>
-        <div class="embudo-metric"><p class="embudo-label">Clics por formulario</p><p class="embudo-value" id="res-adv-cpf">Información no disponible</p></div>
+        <div class="embudo-metric"><p class="embudo-label">Impresiones por formulario</p><p class="embudo-value" id="res-adv-ipf"></p></div>
       </div>
-      <p class="metric-help" id="advanced-empty">Información no disponible con los datos actuales.</p>
+      <p class="metric-help" id="advanced-empty"></p>
       <p class="metric-help">Solo se muestran métricas avanzadas cuando hay base suficiente.</p>
     </div>
   </details>
@@ -222,9 +219,9 @@
     <summary>🧠 DIAGNÓSTICO</summary>
     <div class="metric-body">
       <div class="embudo-resultados">
-        <div class="embudo-metric"><p class="embudo-label">Anuncio</p><p class="embudo-value" id="diag-anuncio">—</p></div>
-        <div class="embudo-metric"><p class="embudo-label">Tráfico</p><p class="embudo-value" id="diag-trafico">—</p></div>
-        <div class="embudo-metric"><p class="embudo-label">Rentabilidad</p><p class="embudo-value" id="diag-rent">—</p></div>
+        <div class="embudo-metric"><p class="embudo-label">Anuncio</p><p class="embudo-value" id="diag-anuncio"></p></div>
+        <div class="embudo-metric"><p class="embudo-label">Tráfico</p><p class="embudo-value" id="diag-trafico"></p></div>
+        <div class="embudo-metric"><p class="embudo-label">Rentabilidad</p><p class="embudo-value" id="diag-rent"></p></div>
       </div>
     </div>
   </details>

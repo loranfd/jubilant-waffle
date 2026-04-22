@@ -823,9 +823,7 @@ function configurarEmbudo() {
     'input-fecha-fin',
     'input-clics',
     'input-coste',
-    'input-impresiones',
-    'input-clics-atr',
-    'input-interacciones'
+    'input-impresiones'
   ];
 
   embudoInputs.forEach((id) => {
@@ -853,7 +851,7 @@ function setMetricValue(id, value, suffix = '') {
   if (!el) return;
   const metricCard = el.closest('.embudo-metric');
   if (value === null || value === undefined || Number.isNaN(value) || !Number.isFinite(value)) {
-    el.textContent = 'Información no disponible';
+    el.textContent = '';
     el.classList.add('unavailable');
     metricCard?.classList.add('metric-disabled');
     return;
@@ -897,35 +895,47 @@ function calcularEmbudo() {
 
   const formularios = contactosEnRango.length;
   document.getElementById('input-formularios').value = formularios;
-  const cpc = safeCalculate(() => coste / clics, [coste, clics]);
-  const conv = safeCalculate(() => (formularios / clics) * 100, [formularios, clics]);
-  const cpl = safeCalculate(() => coste / formularios, [coste, formularios]);
+  const impresionesResumen = parseOptionalNumber('input-impresiones');
+  const clicsResumen = clics;
+  const inputImpresionesAtr = document.getElementById('input-impresiones-atr');
+  const inputClicsAtr = document.getElementById('input-clics-atr');
+  if (inputImpresionesAtr) inputImpresionesAtr.value = impresionesResumen ?? '';
+  if (inputClicsAtr) inputClicsAtr.value = clicsResumen ?? '';
 
-  const impresiones = parseOptionalNumber('input-impresiones');
-  const clicsAtr = parseOptionalNumber('input-clics-atr') ?? clics;
-  const interacciones = parseOptionalNumber('input-interacciones');
-  const ctrCalc = safeCalculate(() => (clicsAtr / impresiones) * 100, [clicsAtr, impresiones]);
-  const engagement = safeCalculate(() => (interacciones / impresiones) * 100, [interacciones, impresiones]);
-  const traficoConv = safeCalculate(() => (formularios / clicsAtr) * 100, [formularios, clicsAtr]);
-  const clicsPorFormulario = safeCalculate(() => clicsAtr / formularios, [clicsAtr, formularios]);
+  const anuncioSection = document.querySelector('.bg-attraction');
+  const resumenCompleto = Boolean(
+    fechaInicio &&
+    finVal &&
+    categoriaFiltro &&
+    clicsResumen !== null &&
+    impresionesResumen !== null &&
+    coste !== null
+  );
+  if (anuncioSection && resumenCompleto) {
+    anuncioSection.open = true;
+  }
+
+  const cpc = safeCalculate(() => coste / clics, [coste, clics]);
+  const conv = safeCalculate(() => Math.min((formularios / clics) * 100, 100), [formularios, clics]);
+  const cpl = safeCalculate(() => coste / formularios, [coste, formularios]);
+  const ctrCalc = safeCalculate(() => (clicsResumen / impresionesResumen) * 100, [clicsResumen, impresionesResumen]);
+  const clicsPorFormulario = safeCalculate(() => clicsResumen / formularios, [clicsResumen, formularios]);
+  const impresionesPorFormulario = safeCalculate(() => impresionesResumen / formularios, [impresionesResumen, formularios]);
 
   setMetricValue('res-cpc', cpc);
   setMetricValue('res-conv', conv, '%');
-  setMetricValue('res-cpl', cpl);
+  setMetricValue('res-cpl', cpl, '€');
   setMetricValue('res-ctr', ctrCalc, '%');
-  setMetricValue('res-eng', engagement, '%');
-  setMetricValue('res-calidad-conv', traficoConv, '%');
   setMetricValue('res-clics-formulario', clicsPorFormulario);
-  setMetricValue('res-rent-cpl', cpl);
-  setMetricValue('res-adv-ctr', ctrCalc, '%');
-  setMetricValue('res-adv-eng', engagement, '%');
-  setMetricValue('res-adv-cpf', clicsPorFormulario);
+  setMetricValue('res-adv-ipf', impresionesPorFormulario);
 
   const advancedMetrics = document.getElementById('advanced-metrics');
   const advancedEmpty = document.getElementById('advanced-empty');
-  const advancedHasData = [ctrCalc, engagement, clicsPorFormulario].some(v => v !== null);
+  const advancedHasData = impresionesPorFormulario !== null;
   if (advancedMetrics) advancedMetrics.style.display = advancedHasData ? 'grid' : 'none';
-  if (advancedEmpty) advancedEmpty.style.display = advancedHasData ? 'none' : 'block';
+  if (advancedEmpty) {
+    advancedEmpty.textContent = '';
+  }
 
   const filasComparacion = [...document.querySelectorAll('#tabla-comparacion tbody tr')];
   filasComparacion.forEach(row => {
@@ -944,17 +954,19 @@ function calcularEmbudo() {
     .forEach(row => tbodyComparacion?.appendChild(row));
 
   const diagAnuncio = ctrCalc === null
-    ? 'Información no disponible'
+    ? ''
     : (ctrCalc < 1.5 ? 'El anuncio puede no estar siendo atractivo' : 'El CTR es saludable');
-  const diagTrafico = traficoConv === null
-    ? 'Información no disponible'
-    : (traficoConv < 3 ? 'Revisar la landing o la segmentación' : 'La calidad del tráfico es correcta');
+  const diagTrafico = conv === null
+    ? ''
+    : (conv < 3 ? 'Revisar la landing o la segmentación' : 'La calidad del tráfico es correcta');
   const diagRent = cpl === null
-    ? 'Información no disponible'
+    ? ''
     : (cpl > 50 ? 'Coste por contacto elevado' : 'Coste por contacto controlado');
   document.getElementById('diag-anuncio').textContent = diagAnuncio;
   document.getElementById('diag-trafico').textContent = diagTrafico;
   document.getElementById('diag-rent').textContent = diagRent;
+  const rentabilidadStatus = document.getElementById('res-rentabilidad-status');
+  if (rentabilidadStatus) rentabilidadStatus.textContent = diagRent;
 }
 
 
