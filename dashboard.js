@@ -977,33 +977,41 @@ async function cargarCampaniasGuardadas() {
 
 async function guardarCampaña() {
   const nombre = String(document.getElementById('camp-nombre')?.value || '').trim();
-  const fechaInicio = String(document.getElementById('camp-fecha-inicio')?.value || '').trim();
-  const fechaFin = String(document.getElementById('camp-fecha-fin')?.value || '').trim();
-  const clics = Number(document.getElementById('camp-clics')?.value || '');
-  const impresiones = Number(document.getElementById('camp-impresiones')?.value || '');
-  const coste = Number(document.getElementById('camp-coste')?.value || '');
-  const leads = Number(document.getElementById('camp-leads')?.value || '');
+  const fechaInicio = String(document.getElementById('input-fecha-inicio')?.value || '').trim();
+  const fechaFin = String(document.getElementById('input-fecha-fin')?.value || '').trim();
+  const clics = Number(document.getElementById('input-clics')?.value || '');
+  const impresiones = Number(document.getElementById('input-impresiones')?.value || '');
+  const coste = Number(document.getElementById('input-coste')?.value || '');
+  const leads = Number(document.getElementById('input-formularios')?.value || '');
   const msg = document.getElementById('guardar-campania-msg');
+
+  const metricToNumber = (id) => {
+    const raw = String(document.getElementById(id)?.textContent || '').replace(',', '.').replace(/[^0-9.-]/g, '');
+    if (!raw) return 0;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : 0;
+  };
 
   const invalidBase = !nombre || !fechaInicio || !fechaFin || !Number.isFinite(clics) || !Number.isFinite(impresiones) || !Number.isFinite(coste) || !Number.isFinite(leads);
   const invalidNums = [clics, impresiones, coste, leads].some(v => v < 0);
   const dInicio = new Date(fechaInicio + 'T00:00:00');
   const dFin = new Date(fechaFin + 'T00:00:00');
   if (invalidBase || invalidNums || isNaN(dInicio) || isNaN(dFin) || dInicio >= dFin) {
-    if (msg) msg.textContent = 'Revisa los campos: obligatorios completos, números válidos >= 0 y fecha inicio menor que fecha fin.';
+    if (msg) msg.textContent = 'Completa correctamente el RESUMEN DE CAMPAÑA y el nombre de campaña antes de guardar.';
     return;
   }
 
   const unDia = 1000 * 60 * 60 * 24;
   const diasCampania = Math.floor((dFin - dInicio) / unDia) + 1;
-  const ctr = safeCalculate(() => (clics / impresiones) * 100, [clics, impresiones]);
-  const cpc = safeCalculate(() => coste / clics, [coste, clics]);
-  const cpl = safeCalculate(() => coste / leads, [coste, leads]);
-  const conversion = safeCalculate(() => (leads / clics) * 100, [leads, clics]);
-  const clicsDia = safeCalculate(() => clics / diasCampania, [clics, diasCampania]);
-  const impresionesDia = safeCalculate(() => impresiones / diasCampania, [impresiones, diasCampania]);
-  const costeDia = safeCalculate(() => coste / diasCampania, [coste, diasCampania]);
-  const leadsDia = safeCalculate(() => leads / diasCampania, [leads, diasCampania]);
+  // Usar exactamente métricas ya calculadas por el RESUMEN/RENDIMIENTO (sin recalcular fórmulas aquí)
+  const ctr = metricToNumber('res-ctr');
+  const cpc = metricToNumber('res-cpc');
+  const cpl = metricToNumber('res-cpl');
+  const conversion = metricToNumber('res-conv');
+  const clicsDia = metricToNumber('res-dia-clics');
+  const impresionesDia = metricToNumber('res-dia-impresiones');
+  const costeDia = metricToNumber('res-dia-coste');
+  const leadsDia = metricToNumber('res-dia-leads');
 
   const campaña = {
     action: 'saveCampaign',
