@@ -5,6 +5,7 @@ const urlApi = 'https://script.google.com/macros/s/AKfycbzhw3QMxMyVBuSzbabj8wPc5
 let datosGlobales = null;
 let datosFiltrados = null;
 let datosCompletos = null;
+let campañasGuardadas = [];
 let appConfig = CategoriaSystem.getDefaultAppConfig();
 
 // Tooltip div global
@@ -96,6 +97,7 @@ async function cargarDatos() {
       datosGlobales = procesarDatos(datosCompletos);
       datosFiltrados = datosCompletos;
       configurarEmbudo();
+      await cargarCampaniasGuardadas();
       poblarMeses(datosCompletos);
       mostrarDashboard();
     } else {
@@ -255,38 +257,6 @@ function procesarDatos(data) {
     }
   });
   
-
-  // DEBUGGING: Mostrar ubicaciones para detectar duplicados
-  console.log('=== ANÁLISIS DE UBICACIONES ===');
-  console.log('Total ubicaciones originales:', ubicacionesOriginales.length);
-  console.log('Total ubicaciones únicas después de normalizar:', ubicacionesNormalizadas.size);
-  console.log('=== ANÁLISIS DE UBICACIONES ===');
-  console.log('🔍 FORZANDO APARICIÓN - Si ves esto, la consola funciona');
-  console.log('Total ubicaciones originales:', ubicacionesOriginales.length);
-  
-  // Agrupar ubicaciones originales por su versión normalizada
-  const gruposDuplicados = new Map();
-  ubicacionesOriginales.forEach(original => {
-    const norm = normalizarUbicacion(original);
-    if (!gruposDuplicados.has(norm)) {
-      gruposDuplicados.set(norm, []);
-    }
-    gruposDuplicados.get(norm).push(original);
-  });
-  
-  // Mostrar solo grupos con más de una variación
-  console.log('Ubicaciones con variaciones detectadas:');
-  gruposDuplicados.forEach((variaciones, normalizada) => {
-    if (variaciones.length > 1) {
-      // Eliminar duplicados exactos en las variaciones
-      const variacionesUnicas = [...new Set(variaciones)];
-      if (variacionesUnicas.length > 1) {
-        console.log(`📍 "${normalizada}" tiene ${variacionesUnicas.length} variaciones:`);
-        variacionesUnicas.forEach(v => console.log(`   - "${v}"`));
-      }
-    }
-  });
-  console.log('=================================');
 
   const contactosTiempo = { normal: {}, villas: {}, total: {} };
   data.forEach(c => {
@@ -794,10 +764,8 @@ function mostrarMapaUbicaciones() {
 }
 
 function configurarEmbudo() {
-  const btnCalcular = document.getElementById('btn-calcular-embudo');
   const selectCategoria = document.getElementById('embudo-categoria');
-  const btnAddCampania = document.getElementById('btn-add-campania');
-  const selectCanal = document.getElementById('input-canal');
+  const btnGuardarCampania = document.getElementById('btn-guardar-campania');
 
   if (selectCategoria) {
     selectCategoria.innerHTML = '<option value="all">Todo</option>';
@@ -809,67 +777,66 @@ function configurarEmbudo() {
     });
   }
 
-  if (btnCalcular) {
-    btnCalcular.removeEventListener('click', calcularEmbudo);
-    btnCalcular.addEventListener('click', calcularEmbudo);
+  if (btnGuardarCampania) {
+    btnGuardarCampania.addEventListener('click', guardarCampaña);
   }
 
-  if (btnAddCampania) {
-    btnAddCampania.addEventListener('click', () => {
-      const tbody = document.querySelector('#tabla-comparacion tbody');
-      if (!tbody) return;
-      const tr = document.createElement('tr');
-      tr.innerHTML = '<td><input value="Campaña nueva"></td><td><input type="number" class="cmp-coste"></td><td><input type="number" class="cmp-form"></td><td class="cmp-cpl">0.00</td>';
-      tbody.appendChild(tr);
-    });
-  }
+  const embudoInputs = [
+    'embudo-categoria',
+    'input-fecha-inicio',
+    'input-fecha-fin',
+    'input-clics',
+    'input-coste',
+    'input-impresiones'
+  ];
 
-  if (selectCanal) {
-    selectCanal.removeEventListener('change', actualizarCamposCanal);
-    selectCanal.addEventListener('change', actualizarCamposCanal);
-    actualizarCamposCanal();
-  }
+  embudoInputs.forEach((id) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('input', calcularEmbudo);
+    el.addEventListener('change', calcularEmbudo);
+  });
+
+  calcularEmbudo();
 }
 
-function actualizarCamposCanal() {
-  const canal = document.getElementById('input-canal')?.value || 'instagram';
-  const mostrarInteracciones = canal !== 'google';
-  const groupInteracciones = document.getElementById('group-interacciones');
-  const metricEng = document.getElementById('metric-eng');
-  const metricClicInter = document.getElementById('metric-clic-inter');
-
-  if (groupInteracciones) groupInteracciones.style.display = mostrarInteracciones ? 'flex' : 'none';
-  if (metricEng) metricEng.style.display = mostrarInteracciones ? 'block' : 'none';
-  if (metricClicInter) metricClicInter.style.display = mostrarInteracciones ? 'block' : 'none';
+function safeCalculate(fn, dependencies) {
+  if (dependencies.some(v => v === null || v === undefined)) {
+    return null;
+  }
+  if (dependencies.some(v => v === 0)) {
+    return null;
+  }
+  return fn();
 }
 
-function setMetricValue(id, value, suffix = '', isAvailable = true) {
+function setMetricValue(id, value, suffix = '') {
   const el = document.getElementById(id);
   if (!el) return;
-  if (!isAvailable || value === null || value === undefined || Number.isNaN(value) || !Number.isFinite(value)) {
-    el.textContent = '—';
+  const metricCard = el.closest('.embudo-metric');
+  if (value === null || value === undefined || Number.isNaN(value) || !Number.isFinite(value)) {
+    el.textContent = '';
     el.classList.add('unavailable');
+    metricCard?.classList.add('metric-disabled');
     return;
   }
   el.classList.remove('unavailable');
+  metricCard?.classList.remove('metric-disabled');
   el.textContent = `${value.toFixed(2)}${suffix}`;
 }
 
-function calcularEmbudo() {
-  const clics = parseFloat(document.getElementById('input-clics').value) || 0;
-  const coste = parseFloat(document.getElementById('input-coste').value) || 0;
-  const canal = document.getElementById('input-canal')?.value || 'instagram';
-  const categoriaFiltro = document.getElementById('embudo-categoria')?.value || 'all';
-  const fechaInicio = document.getElementById('input-fecha-inicio').value;
-  const finVal = document.getElementById('input-fecha-fin').value;
+function parseOptionalNumber(id) {
+  const raw = document.getElementById(id)?.value;
+  if (raw === '' || raw === null || raw === undefined) return null;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) ? parsed : null;
+}
 
-  if (!fechaInicio || !finVal || !datosGlobales) {
-    alert('Completa fecha inicio y fecha fin para calcular.');
-    return;
-  }
+function getContactosFiltradosPorRango(dataCompleta, fechaInicio, fechaFin, categoriaFiltro) {
+  if (!fechaInicio || !fechaFin) return [];
   const inicio = new Date(fechaInicio + 'T00:00:00');
-  const fin = new Date(finVal + 'T23:59:59');
-  const contactosEnRango = (datosGlobales.dataCompleta || []).filter(c => {
+  const fin = new Date(fechaFin + 'T23:59:59');
+  return (dataCompleta || []).filter(c => {
     if (!c['Fecha']) return false;
     const fecha = /^\d{4}-\d{2}-\d{2}$/.test(String(c['Fecha']).trim())
       ? new Date(String(c['Fecha']).trim() + 'T00:00:00')
@@ -879,66 +846,269 @@ function calcularEmbudo() {
     const categoria = CategoriaSystem.resolveCategoria(appConfig, c);
     return categoria?.id === categoriaFiltro;
   });
+}
+
+function getDailyLeads(fechaInicio, fechaFin, contactosEnRango) {
+  if (!fechaInicio || !fechaFin) return [];
+  const start = new Date(fechaInicio + 'T00:00:00');
+  const end = new Date(fechaFin + 'T00:00:00');
+  if (isNaN(start) || isNaN(end) || end < start) return [];
+
+  const leadsByDay = new Map();
+  (contactosEnRango || []).forEach(c => {
+    const raw = String(c['Fecha'] || '').trim();
+    const d = /^\d{4}-\d{2}-\d{2}$/.test(raw) ? new Date(raw + 'T00:00:00') : new Date(raw);
+    if (isNaN(d)) return;
+    const key = d.toISOString().split('T')[0];
+    leadsByDay.set(key, (leadsByDay.get(key) || 0) + 1);
+  });
+
+  const days = [];
+  const cursor = new Date(start);
+  while (cursor <= end) {
+    const key = cursor.toISOString().split('T')[0];
+    days.push({ key, leads: leadsByDay.get(key) || 0 });
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return days;
+}
+
+function normalizarCampaniaRow(row) {
+  return {
+    id: String(row.id || ''),
+    nombre: String(row.nombre || row.nombreCampania || ''),
+    fechaInicio: String(row.fechaInicio || ''),
+    fechaFin: String(row.fechaFin || ''),
+    clics: Number(row.clics || 0),
+    impresiones: Number(row.impresiones || 0),
+    coste: Number(row.coste || 0),
+    leads: Number(row.leads || 0),
+    ctr: Number(row.ctr || 0),
+    cpc: Number(row.cpc || 0),
+    cpl: Number(row.cpl || 0),
+    conversion: Number(row.conversion || 0),
+    diasCampania: Number(row.diasCampania || 0),
+    clicsDia: Number(row.clicsDia || 0),
+    impresionesDia: Number(row.impresionesDia || 0),
+    costeDia: Number(row.costeDia || 0),
+    leadsDia: Number(row.leadsDia || 0),
+    timestamp: String(row.timestamp || '')
+  };
+}
+
+function renderCampaniasEnComparacion() {
+  const tbody = document.querySelector('#tabla-comparacion tbody');
+  if (!tbody) return;
+  const formatDateEs = (value) => {
+    if (!value) return '';
+    const d = /^\d{4}-\d{2}-\d{2}$/.test(String(value)) ? new Date(`${value}T00:00:00`) : new Date(value);
+    if (isNaN(d)) return String(value);
+    return d.toLocaleDateString('es-ES');
+  };
+  const rows = [...campañasGuardadas].sort((a, b) => {
+    const av = Number.isFinite(a.cpl) ? a.cpl : Number.POSITIVE_INFINITY;
+    const bv = Number.isFinite(b.cpl) ? b.cpl : Number.POSITIVE_INFINITY;
+    return av - bv;
+  });
+
+  tbody.innerHTML = rows.map(c => `
+    <tr>
+      <td>${c.nombre || 'Campaña'}</td>
+      <td>${formatDateEs(c.fechaInicio)}</td>
+      <td>${formatDateEs(c.fechaFin)}</td>
+      <td>${Number.isFinite(c.clics) ? c.clics.toFixed(0) : ''}</td>
+      <td>${Number.isFinite(c.impresiones) ? c.impresiones.toFixed(0) : ''}</td>
+      <td>${Number.isFinite(c.coste) ? `${c.coste.toFixed(2)} €` : ''}</td>
+      <td>${Number.isFinite(c.leads) ? c.leads.toFixed(0) : ''}</td>
+      <td>${Number.isFinite(c.cpl) ? `${c.cpl.toFixed(2)} €` : ''}</td>
+    </tr>
+  `).join('');
+
+  const resumen = document.getElementById('comparacion-resumen');
+  if (resumen) {
+    if (rows.length >= 2) {
+      resumen.textContent = `${rows[0].nombre} es la campaña con mejor CPL en histórico.`;
+    } else if (rows.length === 1) {
+      resumen.textContent = `Hay 1 campaña guardada: ${rows[0].nombre}.`;
+    } else {
+      resumen.textContent = 'Aún no hay campañas guardadas en Hoja 3.';
+    }
+  }
+}
+
+async function cargarCampaniasGuardadas() {
+  try {
+    const response = await fetch(`${urlApi}?action=getCampaigns`);
+    const result = await response.json();
+    if (result.status === 'success' && Array.isArray(result.data)) {
+      campañasGuardadas = result.data.map(normalizarCampaniaRow);
+      renderCampaniasEnComparacion();
+    }
+  } catch (error) {
+    console.error('Error al cargar campañas guardadas:', error);
+  }
+}
+
+async function guardarCampaña() {
+  const btnGuardar = document.getElementById('btn-guardar-campania');
+  const nombre = String(document.getElementById('camp-nombre')?.value || '').trim();
+  const fechaInicio = String(document.getElementById('input-fecha-inicio')?.value || '').trim();
+  const fechaFin = String(document.getElementById('input-fecha-fin')?.value || '').trim();
+  const clics = Number(document.getElementById('input-clics')?.value || '');
+  const impresiones = Number(document.getElementById('input-impresiones')?.value || '');
+  const coste = Number(document.getElementById('input-coste')?.value || '');
+  const leads = Number(document.getElementById('input-formularios')?.value || '');
+  const msg = document.getElementById('guardar-campania-msg');
+
+  const metricToNumber = (id) => {
+    const raw = String(document.getElementById(id)?.textContent || '').replace(',', '.').replace(/[^0-9.-]/g, '');
+    if (!raw) return 0;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  const invalidBase = !nombre || !fechaInicio || !fechaFin || !Number.isFinite(clics) || !Number.isFinite(impresiones) || !Number.isFinite(coste) || !Number.isFinite(leads);
+  const invalidNums = [clics, impresiones, coste, leads].some(v => v < 0);
+  const dInicio = new Date(fechaInicio + 'T00:00:00');
+  const dFin = new Date(fechaFin + 'T00:00:00');
+  if (invalidBase || invalidNums || isNaN(dInicio) || isNaN(dFin) || dInicio >= dFin) {
+    if (msg) msg.textContent = 'Completa correctamente el RESUMEN DE CAMPAÑA y el nombre de campaña antes de guardar.';
+    return;
+  }
+
+  const unDia = 1000 * 60 * 60 * 24;
+  const diasCampania = Math.floor((dFin - dInicio) / unDia) + 1;
+  // Usar exactamente métricas ya calculadas por el RESUMEN/RENDIMIENTO (sin recalcular fórmulas aquí)
+  const ctr = metricToNumber('res-ctr');
+  const cpc = metricToNumber('res-cpc');
+  const cpl = metricToNumber('res-cpl');
+  const conversion = metricToNumber('res-conv');
+  const clicsDia = metricToNumber('res-dia-clics');
+  const impresionesDia = metricToNumber('res-dia-impresiones');
+  const costeDia = metricToNumber('res-dia-coste');
+  const leadsDia = metricToNumber('res-dia-leads');
+
+  const campaña = {
+    action: 'saveCampaign',
+    campaign: {
+      id: `camp_${Date.now()}_${Math.floor(Math.random() * 10000)}`,
+      nombre,
+      fechaInicio,
+      fechaFin,
+      clics,
+      impresiones,
+      coste,
+      leads,
+      ctr: ctr ?? 0,
+      cpc: cpc ?? 0,
+      cpl: cpl ?? 0,
+      conversion: conversion ?? 0,
+      diasCampania,
+      clicsDia: clicsDia ?? 0,
+      impresionesDia: impresionesDia ?? 0,
+      costeDia: costeDia ?? 0,
+      leadsDia: leadsDia ?? 0,
+      timestamp: new Date().toISOString()
+    }
+  };
+
+  try {
+    if (btnGuardar) {
+      btnGuardar.classList.add('loading');
+      btnGuardar.disabled = true;
+    }
+    const body = new URLSearchParams();
+    body.set('action', 'saveCampaign');
+    body.set('campaign', JSON.stringify(campaña.campaign));
+    const response = await fetch(urlApi, {
+      method: 'POST',
+      body
+    });
+    const result = await response.json();
+    if (result.status !== 'success') {
+      throw new Error(result.message || 'No se pudo guardar campaña');
+    }
+    if (msg) msg.textContent = 'Campaña guardada correctamente.';
+    await cargarCampaniasGuardadas();
+  } catch (error) {
+    console.error('Error al guardar campaña:', error);
+    if (msg) msg.textContent = 'Error al guardar campaña.';
+  } finally {
+    if (btnGuardar) {
+      btnGuardar.classList.remove('loading');
+      btnGuardar.disabled = false;
+    }
+  }
+}
+
+function calcularEmbudo() {
+  const clics = parseOptionalNumber('input-clics');
+  const coste = parseOptionalNumber('input-coste');
+  const categoriaFiltro = document.getElementById('embudo-categoria')?.value || 'all';
+  const fechaInicio = document.getElementById('input-fecha-inicio').value;
+  const finVal = document.getElementById('input-fecha-fin').value;
+
+  if (!datosGlobales) {
+    return;
+  }
+  const contactosEnRango = getContactosFiltradosPorRango(datosGlobales.dataCompleta, fechaInicio, finVal, categoriaFiltro);
 
   const formularios = contactosEnRango.length;
-  const safeDiv = (a, b) => (b > 0 ? a / b : 0);
-  const hasInteracciones = canal !== 'google';
-
   document.getElementById('input-formularios').value = formularios;
-  const cpc = clics > 0 ? safeDiv(coste, clics) : null;
-  const conv = formularios > 0 && clics > 0 ? safeDiv(formularios, clics) * 100 : null;
-  const cpl = formularios > 0 ? safeDiv(coste, formularios) : null;
+  const impresionesResumen = parseOptionalNumber('input-impresiones');
+  const clicsResumen = clics;
 
-  const impresiones = parseFloat(document.getElementById('input-impresiones')?.value) || 0;
-  const clicsAtr = parseFloat(document.getElementById('input-clics-atr')?.value) || clics;
-  const interacciones = parseFloat(document.getElementById('input-interacciones')?.value) || 0;
-  const ctrCalc = impresiones > 0 ? safeDiv(clicsAtr, impresiones) * 100 : null;
-  const engagement = hasInteracciones && impresiones > 0 && interacciones > 0 ? safeDiv(interacciones, impresiones) * 100 : null;
-  const clicInter = hasInteracciones && interacciones > 0 ? safeDiv(clicsAtr, interacciones) : null;
-  const traficoConv = formularios > 0 && clicsAtr > 0 ? safeDiv(formularios, clicsAtr) * 100 : null;
-  const clicsPorCliente = formularios > 0 ? safeDiv(clicsAtr, formularios) : null;
-  const clientes100 = coste > 0 && formularios > 0 ? safeDiv(formularios, coste) * 100 : null;
-  const intPorForm = hasInteracciones && formularios > 0 && interacciones > 0 ? safeDiv(interacciones, formularios) : null;
-  const impPorLead = formularios > 0 && impresiones > 0 ? safeDiv(impresiones, formularios) : null;
-  const cpmClick = impresiones > 0 ? safeDiv(clicsAtr, impresiones) * 1000 : null;
+  const cpc = safeCalculate(() => coste / clics, [coste, clics]);
+  const conv = safeCalculate(() => Math.min((formularios / clics) * 100, 100), [formularios, clics]);
+  const cpl = safeCalculate(() => coste / formularios, [coste, formularios]);
+  const ctrCalc = safeCalculate(() => (clicsResumen / impresionesResumen) * 100, [clicsResumen, impresionesResumen]);
+  const clicsPorFormulario = safeCalculate(() => clicsResumen / formularios, [clicsResumen, formularios]);
+  const costePorLeadDesdeClic = safeCalculate(() => coste / formularios, [coste, formularios]);
 
   setMetricValue('res-cpc', cpc);
-  setMetricValue('res-conv', conv, '%', conv !== null);
-  setMetricValue('res-cpl', cpl);
-  setMetricValue('res-ctr', ctrCalc, '%', ctrCalc !== null);
-  setMetricValue('res-eng', engagement, '%', engagement !== null);
-  setMetricValue('res-clic-inter', clicInter, '', clicInter !== null);
-  setMetricValue('res-calidad-conv', traficoConv, '%', traficoConv !== null);
-  setMetricValue('res-clics-cliente', clicsPorCliente, '', clicsPorCliente !== null);
-  setMetricValue('res-rent-cpl', cpl, '', cpl !== null);
-  setMetricValue('res-clientes-100', clientes100, '', clientes100 !== null);
-  setMetricValue('res-inst-i-c', clicInter !== null ? clicInter * 100 : null, '%', clicInter !== null);
-  setMetricValue('res-inst-clic-inter', clicInter, '', clicInter !== null);
-  setMetricValue('res-inst-int-form', intPorForm, '', intPorForm !== null);
-  setMetricValue('res-goo-ctr', ctrCalc, '%', ctrCalc !== null);
-  setMetricValue('res-goo-imp-lead', impPorLead, '', impPorLead !== null);
-  setMetricValue('res-goo-cpm-click', cpmClick, '', cpmClick !== null);
-  const filasComparacion = [...document.querySelectorAll('#tabla-comparacion tbody tr')];
-  filasComparacion.forEach(row => {
-    const costeRow = parseFloat(row.querySelector('.cmp-coste')?.value) || 0;
-    const formRow = parseFloat(row.querySelector('.cmp-form')?.value) || 0;
-    row.querySelector('.cmp-cpl').textContent = safeDiv(costeRow, formRow).toFixed(2);
-  });
-  const tbodyComparacion = document.querySelector('#tabla-comparacion tbody');
-  filasComparacion
-    .sort((a, b) => {
-      const av = parseFloat(a.querySelector('.cmp-cpl')?.textContent || '0') || 0;
-      const bv = parseFloat(b.querySelector('.cmp-cpl')?.textContent || '0') || 0;
-      return av - bv;
-    })
-    .forEach(row => tbodyComparacion?.appendChild(row));
+  setMetricValue('res-conv', conv, '%');
+  setMetricValue('res-cpl', cpl, '€');
+  setMetricValue('res-ctr', ctrCalc, '%');
+  setMetricValue('res-coste-lead-click', costePorLeadDesdeClic, '€');
 
-  const diagAnuncio = ctrCalc !== null && ctrCalc >= 1.5 ? '✅ OK' : (ctrCalc !== null ? '⚠️ Mejorable' : '—');
-  const diagTrafico = traficoConv !== null && traficoConv >= 3 ? '✅ OK' : (traficoConv !== null ? '⚠️ Mejorable' : '—');
-  const diagRent = cpl !== null && cpl <= 50 ? '✅ OK' : (cpl !== null ? '⚠️ Revisar' : '—');
-  document.getElementById('diag-anuncio').textContent = diagAnuncio;
-  document.getElementById('diag-trafico').textContent = diagTrafico;
-  document.getElementById('diag-rent').textContent = diagRent;
+  // Rendimiento diario
+  const dailyLeads = getDailyLeads(fechaInicio, finVal, contactosEnRango);
+  const diasCampania = dailyLeads.length || null;
+  const clicsDia = safeCalculate(() => clicsResumen / diasCampania, [clicsResumen, diasCampania]);
+  const impresionesDia = safeCalculate(() => impresionesResumen / diasCampania, [impresionesResumen, diasCampania]);
+  const costeDia = safeCalculate(() => coste / diasCampania, [coste, diasCampania]);
+  const leadsDia = safeCalculate(() => formularios / diasCampania, [formularios, diasCampania]);
+
+  setMetricValue('res-dia-clics', clicsDia);
+  setMetricValue('res-dia-impresiones', impresionesDia);
+  setMetricValue('res-dia-coste', costeDia, '€');
+  setMetricValue('res-dia-leads', leadsDia);
+
+  const kpiMessage = {
+    ctr: ctrCalc === null ? '' : (ctrCalc < 1 ? '🔴 El anuncio no está captando atención diaria' : (ctrCalc < 2 ? '🟠 Atención mejorable, optimizar creatividades' : (ctrCalc <= 4 ? '🟢 CTR correcto y estable' : '🔥 Anuncio muy atractivo diariamente'))),
+    conv: conv === null ? '' : (conv < 1 ? '🔴 La landing no convierte de forma consistente' : (conv < 2 ? '🟠 Conversión baja diaria, revisar formulario o mensaje' : (conv <= 5 ? '🟢 Conversión correcta y estable' : '🔥 Landing muy optimizada en el tiempo'))),
+    cpc: cpc === null ? '' : (cpc < 0.10 ? '🔥 Tráfico extremadamente barato sostenido' : (cpc < 0.30 ? '🟢 Clic eficiente de forma estable' : (cpc <= 0.80 ? '🟠 CPC medio, optimización posible' : '🔴 Clic caro sostenido en el tiempo'))),
+    cpl: cpl === null ? '' : (cpl < 15 ? '🔥 Captación muy eficiente y estable' : (cpl < 35 ? '🟢 Coste controlado diario' : (cpl < 60 ? '🟠 Lead caro de forma sostenida' : '🔴 Campaña no rentable en el tiempo'))),
+    calidad: clicsPorFormulario === null ? '' : (clicsPorFormulario < 20 ? '🔥 Tráfico muy cualificado de forma constante' : (clicsPorFormulario <= 40 ? '🟢 Buen tráfico diario' : (clicsPorFormulario <= 100 ? '🟠 Calidad media estable' : '🔴 Tráfico poco cualificado sostenido')))
+  };
+
+  let combinado = '';
+  if (ctrCalc !== null && conv !== null) {
+    if (ctrCalc < 2 && conv < 2) combinado = '🔴 Problema estructural diario en embudo';
+    else if (ctrCalc >= 2 && conv < 2) combinado = '🔴 Anuncio funciona, landing falla';
+    else if (ctrCalc < 2 && conv >= 2) combinado = '🔴 Buen producto pero anuncio débil';
+    else if (ctrCalc > 4 && conv > 5) combinado = '🔥 Campaña altamente optimizada diaria';
+    else combinado = '🟢 Embudo equilibrado en el tiempo';
+  }
+
+  renderCampaniasEnComparacion();
+
+  document.getElementById('diag-ctr').textContent = kpiMessage.ctr;
+  document.getElementById('diag-conv').textContent = kpiMessage.conv;
+  document.getElementById('diag-cpc').textContent = kpiMessage.cpc;
+  document.getElementById('diag-cpl').textContent = kpiMessage.cpl;
+  document.getElementById('diag-calidad').textContent = kpiMessage.calidad;
+  document.getElementById('diag-combinado').textContent = combinado;
 }
 
 

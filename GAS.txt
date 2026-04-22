@@ -493,6 +493,17 @@ function handleCategoriasAction_(action, payload, method) {
       return createResponse({ status: 'success', categoria: categorias[idx], config: next });
     }
 
+    if (actionName === 'saveCampaign') {
+      const campaign = (typeof payload.campaign === 'string')
+        ? (JSON.parse(payload.campaign || '{}'))
+        : (payload.campaign || payload);
+      return saveCampaign_(campaign);
+    }
+
+    if (actionName === 'getCampaigns') {
+      return createResponse({ status: 'success', data: getCampaigns_() });
+    }
+
     return createResponse({ status: 'error', message: 'Acción no soportada' });
   } catch (error) {
     Logger.log(`Error en handleCategoriasAction_: ${error.message}`);
@@ -1041,4 +1052,61 @@ function resolveCategoriaIdDesdeDatos_(datos) {
 
 function normalizeString_(value) {
   return String(value || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+function getCampaignSheet_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName('Hoja 3');
+  if (!sheet) sheet = ss.insertSheet('Hoja 3');
+  ensureCampaignHeaders_(sheet);
+  return sheet;
+}
+
+function ensureCampaignHeaders_(sheet) {
+  const expected = [
+    'id', 'nombre', 'fechaInicio', 'fechaFin', 'clics', 'impresiones', 'coste', 'leads',
+    'ctr', 'cpc', 'cpl', 'conversion', 'diasCampania',
+    'clicsDia', 'impresionesDia', 'costeDia', 'leadsDia', 'timestamp'
+  ];
+  const lastCol = Math.max(sheet.getLastColumn(), expected.length);
+  const current = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  const mismatch = expected.some((h, i) => String(current[i] || '') !== h);
+  if (mismatch) {
+    sheet.getRange(1, 1, 1, expected.length).setValues([expected]);
+  }
+  return expected;
+}
+
+function saveCampaign_(campaign) {
+  const sheet = getCampaignSheet_();
+  const headers = ensureCampaignHeaders_(sheet);
+  const id = String(campaign.id || `camp_${Date.now()}_${Math.floor(Math.random() * 10000)}`);
+  const row = headers.map(h => (campaign[h] !== undefined ? campaign[h] : ''));
+  row[0] = id;
+
+  let rowNum = -1;
+  if (sheet.getLastRow() > 1) {
+    const ids = sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues().map(r => String(r[0]));
+    const idx = ids.findIndex(v => v === id);
+    if (idx !== -1) rowNum = idx + 2;
+  }
+
+  if (rowNum === -1) {
+    sheet.appendRow(row);
+  } else {
+    sheet.getRange(rowNum, 1, 1, headers.length).setValues([row]);
+  }
+  return createResponse({ status: 'success', id: id, campaign: campaign });
+}
+
+function getCampaigns_() {
+  const sheet = getCampaignSheet_();
+  if (sheet.getLastRow() < 2) return [];
+  const headers = ensureCampaignHeaders_(sheet);
+  const values = sheet.getRange(2, 1, sheet.getLastRow() - 1, headers.length).getValues();
+  return values.map(row => {
+    const obj = {};
+    headers.forEach((h, i) => obj[h] = row[i]);
+    return obj;
+  });
 }

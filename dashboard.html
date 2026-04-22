@@ -115,16 +115,8 @@
 <div class="metrics-accordion">
   <details class="metric-block bg-campaign" open>
     <summary>👉 🟢 RESUMEN DE CAMPAÑA</summary>
-    <div class="metric-body">
+      <div class="metric-body">
       <div class="embudo-inputs">
-        <div class="input-group">
-          <label>Canal de publicidad</label>
-          <select id="input-canal" class="form-select">
-            <option value="instagram">Instagram / Facebook / LinkedIn</option>
-            <option value="google">Google Ads</option>
-            <option value="otro">Otro</option>
-          </select>
-        </div>
         <div class="input-group">
           <label>Promoción/Categoría</label>
           <select id="embudo-categoria" class="form-select">
@@ -144,83 +136,70 @@
           <input type="number" id="input-clics" placeholder="Ej: 1000">
         </div>
         <div class="input-group">
+          <label>Impresiones</label>
+          <input type="number" id="input-impresiones" placeholder="Ej: 50000">
+        </div>
+        <div class="input-group">
           <label>Coste Total (€)</label>
           <input type="number" step="0.01" id="input-coste" placeholder="Ej: 500">
         </div>
         <div class="input-group">
-          <label>Formularios (auto)</label>
+          <label>Formularios/Clientes (auto)</label>
           <input type="number" id="input-formularios" readonly>
         </div>
       </div>
-      <button id="btn-calcular-embudo" class="metric-btn">Calcular métricas</button>
       <div class="embudo-resultados">
-        <div class="embudo-metric"><p class="embudo-label">💰 Coste por contacto</p><p class="embudo-value" id="res-cpl">0.00</p></div>
-        <div class="embudo-metric"><p class="embudo-label">📈 Conversión (%)</p><p class="embudo-value" id="res-conv">0.00%</p></div>
-        <div class="embudo-metric"><p class="embudo-label">💸 CPC</p><p class="embudo-value" id="res-cpc">0.00</p></div>
+        <div class="embudo-metric"><p class="embudo-label">💰 Coste por contacto</p><p class="embudo-value" id="res-cpl"></p></div>
+        <div class="embudo-metric"><p class="embudo-label">📈 Conversión (%)</p><p class="embudo-value" id="res-conv"></p></div>
+        <div class="embudo-metric"><p class="embudo-label">💸 CPC</p><p class="embudo-value" id="res-cpc"></p></div>
       </div>
       <p class="metric-help">Vista principal, limpia y rápida para analizar la campaña.</p>
     </div>
   </details>
 
-  <details class="metric-block bg-attraction">
-    <summary>👉 🟡 ANUNCIO (ATRACCIÓN)</summary>
+  <details class="metric-block bg-compare">
+    <summary>💾 GUARDAR CAMPAÑA</summary>
     <div class="metric-body">
       <div class="embudo-inputs">
-        <div class="input-group"><label>Impresiones</label><input type="number" id="input-impresiones"></div>
-        <div class="input-group"><label>Clics</label><input type="number" id="input-clics-atr"></div>
-        <div class="input-group" id="group-interacciones"><label>Interacciones</label><input type="number" id="input-interacciones"></div>
+        <div class="input-group"><label>Nombre campaña</label><input type="text" id="camp-nombre" placeholder="Ej: Meta Abril"></div>
       </div>
-      <div class="embudo-resultados">
-        <div class="embudo-metric"><p class="embudo-label">CTR (%)</p><p class="embudo-value" id="res-ctr">0.00%</p></div>
-        <div class="embudo-metric" id="metric-eng"><p class="embudo-label">Engagement (%)</p><p class="embudo-value" id="res-eng">—</p></div>
-        <div class="embudo-metric" id="metric-clic-inter"><p class="embudo-label">Clic/Interacción</p><p class="embudo-value" id="res-clic-inter">—</p></div>
-      </div>
-      <p class="metric-help">👉 Mide si el anuncio llama la atención.</p>
+      <button id="btn-guardar-campania" class="metric-btn">Guardar en histórico</button>
+      <p class="metric-help">Usa exactamente los datos ya calculados en 🟢 RESUMEN DE CAMPAÑA (fechas, clics, impresiones, coste y formularios).</p>
+      <p class="metric-help" id="guardar-campania-msg"></p>
     </div>
   </details>
 
-  <details class="metric-block bg-quality">
-    <summary>👉 🔵 TRÁFICO (CALIDAD)</summary>
-    <div class="metric-body">
-      <div class="embudo-resultados">
-        <div class="embudo-metric"><p class="embudo-label">Conversión (%)</p><p class="embudo-value" id="res-calidad-conv">0.00%</p></div>
-        <div class="embudo-metric"><p class="embudo-label">Clics por cliente</p><p class="embudo-value" id="res-clics-cliente">0.00</p></div>
+  <div class="metric-row-two">
+    <details class="metric-block bg-attraction" open>
+      <summary>👉 🟡 ANUNCIO (ATRACCIÓN)</summary>
+      <div class="metric-body">
+        <div class="embudo-resultados">
+          <div class="embudo-metric"><p class="embudo-label">CTR (%)</p><p class="embudo-value" id="res-ctr"></p></div>
+        </div>
+        <p class="metric-help">👉 Mide si el anuncio llama la atención.</p>
       </div>
-      <p class="metric-help">Mide cuántas visitas necesitas para conseguir 1 cliente.</p>
-    </div>
-  </details>
+    </details>
 
-  <details class="metric-block bg-profit">
-    <summary>👉 🟣 RENTABILIDAD</summary>
-    <div class="metric-body">
-      <div class="embudo-resultados">
-        <div class="embudo-metric"><p class="embudo-label">Coste por cliente (€)</p><p class="embudo-value" id="res-rent-cpl">0.00</p></div>
-        <div class="embudo-metric"><p class="embudo-label">Clientes por 100€</p><p class="embudo-value" id="res-clientes-100">0.00</p></div>
+    <details class="metric-block bg-quality" open>
+      <summary>👉 🔵 TRÁFICO (CALIDAD)</summary>
+      <div class="metric-body">
+        <div class="embudo-resultados">
+          <div class="embudo-metric"><p class="embudo-label">Coste por lead desde clic</p><p class="embudo-value" id="res-coste-lead-click"></p></div>
+        </div>
+        <p class="metric-help">Coste medio estimado por lead generado desde tráfico de clics. Te ayuda a validar si el clic acaba convirtiendo a un coste razonable.</p>
       </div>
-      <p class="metric-help">Ideal para comparar campañas y ver rentabilidad real.</p>
-    </div>
-  </details>
+    </details>
+  </div>
 
   <details class="metric-block bg-advanced">
-    <summary>⚙️ ANÁLISIS AVANZADO</summary>
+    <summary>📊 RENDIMIENTO DIARIO</summary>
     <div class="metric-body">
-      <details class="metric-subblock">
-        <summary>📱 INSTAGRAM</summary>
-        <div class="embudo-resultados">
-          <div class="embudo-metric"><p class="embudo-label">Interacción → Clic (%)</p><p class="embudo-value" id="res-inst-i-c">0.00%</p></div>
-          <div class="embudo-metric"><p class="embudo-label">Clic/Interacción</p><p class="embudo-value" id="res-inst-clic-inter">0.00</p></div>
-          <div class="embudo-metric"><p class="embudo-label">Interacciones por formulario</p><p class="embudo-value" id="res-inst-int-form">0.00</p></div>
-        </div>
-      </details>
-      <details class="metric-subblock">
-        <summary>🔎 GOOGLE</summary>
-        <div class="embudo-resultados">
-          <div class="embudo-metric"><p class="embudo-label">CTR (%)</p><p class="embudo-value" id="res-goo-ctr">0.00%</p></div>
-          <div class="embudo-metric"><p class="embudo-label">Impresiones por lead</p><p class="embudo-value" id="res-goo-imp-lead">0.00</p></div>
-          <div class="embudo-metric"><p class="embudo-label">Clics por 1.000 impresiones</p><p class="embudo-value" id="res-goo-cpm-click">0.00</p></div>
-        </div>
-      </details>
-      <p class="metric-help">Bloques avanzados: útiles cuando necesitas más detalle por canal.</p>
+      <div class="embudo-resultados">
+        <div class="embudo-metric"><p class="embudo-label">Clics por día</p><p class="embudo-value" id="res-dia-clics"></p></div>
+        <div class="embudo-metric"><p class="embudo-label">Impresiones por día</p><p class="embudo-value" id="res-dia-impresiones"></p></div>
+        <div class="embudo-metric"><p class="embudo-label">Coste por día</p><p class="embudo-value" id="res-dia-coste"></p></div>
+        <div class="embudo-metric"><p class="embudo-label">Leads por día</p><p class="embudo-value" id="res-dia-leads"></p></div>
+      </div>
     </div>
   </details>
 
@@ -228,24 +207,24 @@
     <summary>🧩 🔥 COMPARACIÓN</summary>
     <div class="metric-body">
       <table id="tabla-comparacion" class="tabla-comparacion">
-        <thead><tr><th>Campaña</th><th>Coste (€)</th><th>Formularios</th><th>Coste por cliente (€)</th></tr></thead>
-        <tbody>
-          <tr><td><input value="Instagram Abril"></td><td><input type="number" class="cmp-coste"></td><td><input type="number" class="cmp-form"></td><td class="cmp-cpl">0.00</td></tr>
-          <tr><td><input value="Google Abril"></td><td><input type="number" class="cmp-coste"></td><td><input type="number" class="cmp-form"></td><td class="cmp-cpl">0.00</td></tr>
-        </tbody>
+        <thead><tr><th>Campaña</th><th>Inicio</th><th>Fin</th><th>Clics</th><th>Impresiones</th><th>Coste</th><th>Clientes</th><th>CPL</th></tr></thead>
+        <tbody></tbody>
       </table>
-      <button id="btn-add-campania" class="metric-btn secondary">+ Añadir campaña</button>
-      <p class="metric-help">Se ordena automáticamente por coste por cliente (de menor a mayor).</p>
+      <p class="metric-help">Campañas guardadas y ordenadas por CPL (mejor → peor).</p>
+      <p class="metric-help" id="comparacion-resumen"></p>
     </div>
   </details>
 
   <details class="metric-block bg-diagnostic">
     <summary>🧠 DIAGNÓSTICO</summary>
     <div class="metric-body">
-      <div class="embudo-resultados">
-        <div class="embudo-metric"><p class="embudo-label">Anuncio</p><p class="embudo-value" id="diag-anuncio">—</p></div>
-        <div class="embudo-metric"><p class="embudo-label">Tráfico</p><p class="embudo-value" id="diag-trafico">—</p></div>
-        <div class="embudo-metric"><p class="embudo-label">Rentabilidad</p><p class="embudo-value" id="diag-rent">—</p></div>
+      <div class="diagnostic-grid" id="diagnostic-grid">
+        <div class="diag-item"><p class="embudo-label">CTR</p><p class="embudo-value" id="diag-ctr"></p></div>
+        <div class="diag-item"><p class="embudo-label">Conversión</p><p class="embudo-value" id="diag-conv"></p></div>
+        <div class="diag-item"><p class="embudo-label">CPC</p><p class="embudo-value" id="diag-cpc"></p></div>
+        <div class="diag-item"><p class="embudo-label">CPL</p><p class="embudo-value" id="diag-cpl"></p></div>
+        <div class="diag-item"><p class="embudo-label">Calidad</p><p class="embudo-value" id="diag-calidad"></p></div>
+        <div class="diag-item"><p class="embudo-label">Embudo combinado</p><p class="embudo-value" id="diag-combinado"></p></div>
       </div>
     </div>
   </details>
