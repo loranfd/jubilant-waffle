@@ -265,6 +265,12 @@ body {
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
 }
 
+.metric-row-two {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
 .metric-block > summary {
   cursor: pointer;
   list-style: none;
@@ -409,6 +415,25 @@ body {
   font-weight: bold;
 }
 
+.diagnostic-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.diag-item {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 0.9rem;
+}
+
+.diag-item .embudo-value {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #334155;
+}
+
 /* Mapa de ubicaciones */
 .mapa-grid {
   display: grid;
@@ -495,6 +520,9 @@ body {
   }
 
   .embudo-inputs {
+    grid-template-columns: 1fr;
+  }
+  .metric-row-two, .diagnostic-grid {
     grid-template-columns: 1fr;
   }
 

@@ -894,25 +894,6 @@ function getContactosFiltradosPorRango(dataCompleta, fechaInicio, fechaFin, cate
   });
 }
 
-function formatTrend(delta) {
-  if (delta > 0.12) return 'mejora';
-  if (delta < -0.12) return 'empeora';
-  return 'estable';
-}
-
-function trendFromSeries(series) {
-  if (!Array.isArray(series) || series.length < 4) return 'estable';
-  const half = Math.floor(series.length / 2);
-  const first = series.slice(0, half);
-  const second = series.slice(half);
-  const avg = arr => arr.reduce((a, b) => a + b, 0) / (arr.length || 1);
-  const firstAvg = avg(first);
-  const secondAvg = avg(second);
-  if (firstAvg === 0 && secondAvg === 0) return 'estable';
-  const delta = firstAvg === 0 ? 1 : (secondAvg - firstAvg) / firstAvg;
-  return formatTrend(delta);
-}
-
 function getDailyLeads(fechaInicio, fechaFin, contactosEnRango) {
   if (!fechaInicio || !fechaFin) return [];
   const start = new Date(fechaInicio + 'T00:00:00');
@@ -954,23 +935,6 @@ function calcularEmbudo() {
   document.getElementById('input-formularios').value = formularios;
   const impresionesResumen = parseOptionalNumber('input-impresiones');
   const clicsResumen = clics;
-  const inputImpresionesAtr = document.getElementById('input-impresiones-atr');
-  const inputClicsAtr = document.getElementById('input-clics-atr');
-  if (inputImpresionesAtr) inputImpresionesAtr.value = impresionesResumen ?? '';
-  if (inputClicsAtr) inputClicsAtr.value = clicsResumen ?? '';
-
-  const anuncioSection = document.querySelector('.bg-attraction');
-  const resumenCompleto = Boolean(
-    fechaInicio &&
-    finVal &&
-    categoriaFiltro &&
-    clicsResumen !== null &&
-    impresionesResumen !== null &&
-    coste !== null
-  );
-  if (anuncioSection && resumenCompleto) {
-    anuncioSection.open = true;
-  }
 
   const cpc = safeCalculate(() => coste / clics, [coste, clics]);
   const conv = safeCalculate(() => Math.min((formularios / clics) * 100, 100), [formularios, clics]);
@@ -992,56 +956,27 @@ function calcularEmbudo() {
   const impresionesDia = safeCalculate(() => impresionesResumen / diasCampania, [impresionesResumen, diasCampania]);
   const costeDia = safeCalculate(() => coste / diasCampania, [coste, diasCampania]);
   const leadsDia = safeCalculate(() => formularios / diasCampania, [formularios, diasCampania]);
-  const cpcDia = safeCalculate(() => costeDia / clicsDia, [costeDia, clicsDia]);
-  const ctrDia = safeCalculate(() => (clicsDia / impresionesDia) * 100, [clicsDia, impresionesDia]);
-  const convDia = safeCalculate(() => (leadsDia / clicsDia) * 100, [leadsDia, clicsDia]);
-  const cplDia = safeCalculate(() => costeDia / leadsDia, [costeDia, leadsDia]);
 
   setMetricValue('res-dia-clics', clicsDia);
   setMetricValue('res-dia-impresiones', impresionesDia);
   setMetricValue('res-dia-coste', costeDia, '€');
   setMetricValue('res-dia-leads', leadsDia);
-  setMetricValue('res-dia-cpc', cpcDia, '€');
-  setMetricValue('res-dia-ctr', ctrDia, '%');
-  setMetricValue('res-dia-conv', convDia, '%');
-  setMetricValue('res-dia-cpl', cplDia, '€');
-
-  const leadsSeries = dailyLeads.map(d => d.leads);
-  const trendLeads = trendFromSeries(leadsSeries);
-  const trendCtr = ctrDia === null ? '' : 'estable';
-  const trendCpc = cpcDia === null ? '' : 'estable';
-  const trendConv = trendLeads;
-  const trendCpl = trendLeads === 'mejora' ? 'mejora' : (trendLeads === 'empeora' ? 'empeora' : 'estable');
 
   const kpiMessage = {
-    ctr: ctrDia === null ? '' : (ctrDia < 1 ? '🔴 El anuncio no está captando atención diaria' : (ctrDia < 2 ? '🟠 Atención mejorable, optimizar creatividades' : (ctrDia <= 4 ? '🟢 CTR correcto y estable' : '🔥 Anuncio muy atractivo diariamente'))),
-    conv: convDia === null ? '' : (convDia < 1 ? '🔴 La landing no convierte de forma consistente' : (convDia < 2 ? '🟠 Conversión baja diaria, revisar formulario o mensaje' : (convDia <= 5 ? '🟢 Conversión correcta y estable' : '🔥 Landing muy optimizada en el tiempo'))),
-    cpc: cpcDia === null ? '' : (cpcDia < 0.10 ? '🔥 Tráfico extremadamente barato sostenido' : (cpcDia < 0.30 ? '🟢 Clic eficiente de forma estable' : (cpcDia <= 0.80 ? '🟠 CPC medio, optimización posible' : '🔴 Clic caro sostenido en el tiempo'))),
-    cpl: cplDia === null ? '' : (cplDia < 15 ? '🔥 Captación muy eficiente y estable' : (cplDia < 35 ? '🟢 Coste controlado diario' : (cplDia < 60 ? '🟠 Lead caro de forma sostenida' : '🔴 Campaña no rentable en el tiempo'))),
+    ctr: ctrCalc === null ? '' : (ctrCalc < 1 ? '🔴 El anuncio no está captando atención diaria' : (ctrCalc < 2 ? '🟠 Atención mejorable, optimizar creatividades' : (ctrCalc <= 4 ? '🟢 CTR correcto y estable' : '🔥 Anuncio muy atractivo diariamente'))),
+    conv: conv === null ? '' : (conv < 1 ? '🔴 La landing no convierte de forma consistente' : (conv < 2 ? '🟠 Conversión baja diaria, revisar formulario o mensaje' : (conv <= 5 ? '🟢 Conversión correcta y estable' : '🔥 Landing muy optimizada en el tiempo'))),
+    cpc: cpc === null ? '' : (cpc < 0.10 ? '🔥 Tráfico extremadamente barato sostenido' : (cpc < 0.30 ? '🟢 Clic eficiente de forma estable' : (cpc <= 0.80 ? '🟠 CPC medio, optimización posible' : '🔴 Clic caro sostenido en el tiempo'))),
+    cpl: cpl === null ? '' : (cpl < 15 ? '🔥 Captación muy eficiente y estable' : (cpl < 35 ? '🟢 Coste controlado diario' : (cpl < 60 ? '🟠 Lead caro de forma sostenida' : '🔴 Campaña no rentable en el tiempo'))),
     calidad: clicsPorFormulario === null ? '' : (clicsPorFormulario < 20 ? '🔥 Tráfico muy cualificado de forma constante' : (clicsPorFormulario <= 40 ? '🟢 Buen tráfico diario' : (clicsPorFormulario <= 100 ? '🟠 Calidad media estable' : '🔴 Tráfico poco cualificado sostenido')))
   };
 
   let combinado = '';
-  if (ctrDia !== null && convDia !== null) {
-    if (ctrDia < 2 && convDia < 2) combinado = '🔴 Problema estructural diario en embudo';
-    else if (ctrDia >= 2 && convDia < 2) combinado = '🔴 Anuncio funciona, landing falla';
-    else if (ctrDia < 2 && convDia >= 2) combinado = '🔴 Buen producto pero anuncio débil';
-    else if (ctrDia > 4 && convDia > 5) combinado = '🔥 Campaña altamente optimizada diaria';
+  if (ctrCalc !== null && conv !== null) {
+    if (ctrCalc < 2 && conv < 2) combinado = '🔴 Problema estructural diario en embudo';
+    else if (ctrCalc >= 2 && conv < 2) combinado = '🔴 Anuncio funciona, landing falla';
+    else if (ctrCalc < 2 && conv >= 2) combinado = '🔴 Buen producto pero anuncio débil';
+    else if (ctrCalc > 4 && conv > 5) combinado = '🔥 Campaña altamente optimizada diaria';
     else combinado = '🟢 Embudo equilibrado en el tiempo';
-  }
-
-  const dailyInsights = document.getElementById('daily-insights');
-  if (dailyInsights) {
-    const lines = [
-      kpiMessage.ctr ? `${kpiMessage.ctr} · Tendencia: ${trendCtr}` : '',
-      kpiMessage.conv ? `${kpiMessage.conv} · Tendencia: ${trendConv}` : '',
-      kpiMessage.cpc ? `${kpiMessage.cpc} · Tendencia: ${trendCpc}` : '',
-      kpiMessage.cpl ? `${kpiMessage.cpl} · Tendencia: ${trendCpl}` : '',
-      kpiMessage.calidad,
-      combinado,
-      'Prioridad de decisión: tendencia diaria (mejora / empeora / estable).'
-    ].filter(Boolean);
-    dailyInsights.innerHTML = lines.map(l => `<div>${l}</div>`).join('');
   }
 
   const filasComparacion = [...document.querySelectorAll('#tabla-comparacion tbody tr')];
@@ -1055,27 +990,32 @@ function calcularEmbudo() {
     const cplRow = safeCalculate(() => costeRow / formRow, [costeRow, formRow]);
     row.querySelector('.cmp-cpl').textContent = cplRow === null ? 'N/D' : cplRow.toFixed(2);
   });
-  const tbodyComparacion = document.querySelector('#tabla-comparacion tbody');
-  filasComparacion
-    .sort((a, b) => {
-      const av = parseFloat(a.querySelector('.cmp-cpl')?.textContent || '999999') || 999999;
-      const bv = parseFloat(b.querySelector('.cmp-cpl')?.textContent || '999999') || 999999;
-      return av - bv;
+  const comparacionResumen = document.getElementById('comparacion-resumen');
+  const candidatas = filasComparacion
+    .map(row => {
+      const nombre = row.querySelector('td input')?.value?.trim() || 'Campaña';
+      const cplText = row.querySelector('.cmp-cpl')?.textContent || 'N/D';
+      const cplNum = parseFloat(cplText);
+      return { nombre, cplNum: Number.isFinite(cplNum) ? cplNum : null };
     })
-    .forEach(row => tbodyComparacion?.appendChild(row));
+    .filter(c => c.cplNum !== null);
+  if (comparacionResumen) {
+    if (candidatas.length >= 2) {
+      candidatas.sort((a, b) => a.cplNum - b.cplNum);
+      const mejor = candidatas[0];
+      const peor = candidatas[candidatas.length - 1];
+      comparacionResumen.textContent = `${mejor.nombre} tiene mejor eficiencia de captación que ${peor.nombre} en los datos actuales.`;
+    } else {
+      comparacionResumen.textContent = '';
+    }
+  }
 
-  const diagAnuncio = ctrDia === null
-    ? ''
-    : `CTR diario ${trendCtr}: ${kpiMessage.ctr.replace(/^[^\s]+\s/, '')}`;
-  const diagTrafico = convDia === null
-    ? ''
-    : `Conversión diaria ${trendConv}: ${kpiMessage.conv.replace(/^[^\s]+\s/, '')}`;
-  const diagRent = cplDia === null
-    ? ''
-    : `CPL diario ${trendCpl}: ${kpiMessage.cpl.replace(/^[^\s]+\s/, '')}`;
-  document.getElementById('diag-anuncio').textContent = diagAnuncio;
-  document.getElementById('diag-trafico').textContent = diagTrafico;
-  document.getElementById('diag-rent').textContent = diagRent;
+  document.getElementById('diag-ctr').textContent = kpiMessage.ctr;
+  document.getElementById('diag-conv').textContent = kpiMessage.conv;
+  document.getElementById('diag-cpc').textContent = kpiMessage.cpc;
+  document.getElementById('diag-cpl').textContent = kpiMessage.cpl;
+  document.getElementById('diag-calidad').textContent = kpiMessage.calidad;
+  document.getElementById('diag-combinado').textContent = combinado;
 }
 
 

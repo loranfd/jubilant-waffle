@@ -157,29 +157,27 @@
     </div>
   </details>
 
-  <details class="metric-block bg-attraction">
-    <summary>👉 🟡 ANUNCIO (ATRACCIÓN)</summary>
-    <div class="metric-body">
-      <div class="embudo-inputs">
-        <div class="input-group"><label>Impresiones</label><input type="number" id="input-impresiones-atr" readonly></div>
-        <div class="input-group"><label>Clics</label><input type="number" id="input-clics-atr" readonly></div>
+  <div class="metric-row-two">
+    <details class="metric-block bg-attraction" open>
+      <summary>👉 🟡 ANUNCIO (ATRACCIÓN)</summary>
+      <div class="metric-body">
+        <div class="embudo-resultados">
+          <div class="embudo-metric"><p class="embudo-label">CTR (%)</p><p class="embudo-value" id="res-ctr"></p></div>
+        </div>
+        <p class="metric-help">👉 Mide si el anuncio llama la atención.</p>
       </div>
-      <div class="embudo-resultados">
-        <div class="embudo-metric"><p class="embudo-label">CTR (%)</p><p class="embudo-value" id="res-ctr"></p></div>
-      </div>
-      <p class="metric-help">👉 Mide si el anuncio llama la atención.</p>
-    </div>
-  </details>
+    </details>
 
-  <details class="metric-block bg-quality">
-    <summary>👉 🔵 TRÁFICO (CALIDAD)</summary>
-    <div class="metric-body">
-      <div class="embudo-resultados">
-        <div class="embudo-metric"><p class="embudo-label">Coste por lead desde clic</p><p class="embudo-value" id="res-coste-lead-click"></p></div>
+    <details class="metric-block bg-quality" open>
+      <summary>👉 🔵 TRÁFICO (CALIDAD)</summary>
+      <div class="metric-body">
+        <div class="embudo-resultados">
+          <div class="embudo-metric"><p class="embudo-label">Coste por lead desde clic</p><p class="embudo-value" id="res-coste-lead-click"></p></div>
+        </div>
+        <p class="metric-help">Coste medio estimado por lead generado desde tráfico de clics. Te ayuda a validar si el clic acaba convirtiendo a un coste razonable.</p>
       </div>
-      <p class="metric-help">Coste medio estimado por lead generado desde tráfico de clics. Te ayuda a validar si el clic acaba convirtiendo a un coste razonable.</p>
-    </div>
-  </details>
+    </details>
+  </div>
 
   <details class="metric-block bg-advanced">
     <summary>📊 RENDIMIENTO DIARIO</summary>
@@ -189,12 +187,7 @@
         <div class="embudo-metric"><p class="embudo-label">Impresiones por día</p><p class="embudo-value" id="res-dia-impresiones"></p></div>
         <div class="embudo-metric"><p class="embudo-label">Coste por día</p><p class="embudo-value" id="res-dia-coste"></p></div>
         <div class="embudo-metric"><p class="embudo-label">Leads por día</p><p class="embudo-value" id="res-dia-leads"></p></div>
-        <div class="embudo-metric"><p class="embudo-label">CPC diario</p><p class="embudo-value" id="res-dia-cpc"></p></div>
-        <div class="embudo-metric"><p class="embudo-label">CTR diario</p><p class="embudo-value" id="res-dia-ctr"></p></div>
-        <div class="embudo-metric"><p class="embudo-label">Conversión diaria</p><p class="embudo-value" id="res-dia-conv"></p></div>
-        <div class="embudo-metric"><p class="embudo-label">CPL diario</p><p class="embudo-value" id="res-dia-cpl"></p></div>
       </div>
-      <div id="daily-insights" class="metric-help"></div>
     </div>
   </details>
 
@@ -210,16 +203,20 @@
       </table>
       <button id="btn-add-campania" class="metric-btn secondary">+ Añadir campaña</button>
       <p class="metric-help">Formularios se calculan automáticamente por rango de fechas (mismo criterio del resumen de campaña).</p>
+      <p class="metric-help" id="comparacion-resumen"></p>
     </div>
   </details>
 
   <details class="metric-block bg-diagnostic">
     <summary>🧠 DIAGNÓSTICO</summary>
     <div class="metric-body">
-      <div class="embudo-resultados">
-        <div class="embudo-metric"><p class="embudo-label">Anuncio</p><p class="embudo-value" id="diag-anuncio"></p></div>
-        <div class="embudo-metric"><p class="embudo-label">Tráfico</p><p class="embudo-value" id="diag-trafico"></p></div>
-        <div class="embudo-metric"><p class="embudo-label">Rentabilidad</p><p class="embudo-value" id="diag-rent"></p></div>
+      <div class="diagnostic-grid" id="diagnostic-grid">
+        <div class="diag-item"><p class="embudo-label">CTR</p><p class="embudo-value" id="diag-ctr"></p></div>
+        <div class="diag-item"><p class="embudo-label">Conversión</p><p class="embudo-value" id="diag-conv"></p></div>
+        <div class="diag-item"><p class="embudo-label">CPC</p><p class="embudo-value" id="diag-cpc"></p></div>
+        <div class="diag-item"><p class="embudo-label">CPL</p><p class="embudo-value" id="diag-cpl"></p></div>
+        <div class="diag-item"><p class="embudo-label">Calidad</p><p class="embudo-value" id="diag-calidad"></p></div>
+        <div class="diag-item"><p class="embudo-label">Embudo combinado</p><p class="embudo-value" id="diag-combinado"></p></div>
       </div>
     </div>
   </details>
