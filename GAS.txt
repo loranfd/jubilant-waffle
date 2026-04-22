@@ -494,7 +494,9 @@ function handleCategoriasAction_(action, payload, method) {
     }
 
     if (actionName === 'saveCampaign') {
-      const campaign = payload.campaign || payload;
+      const campaign = (typeof payload.campaign === 'string')
+        ? (JSON.parse(payload.campaign || '{}'))
+        : (payload.campaign || payload);
       return saveCampaign_(campaign);
     }
 

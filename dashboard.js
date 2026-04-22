@@ -258,38 +258,6 @@ function procesarDatos(data) {
   });
   
 
-  // DEBUGGING: Mostrar ubicaciones para detectar duplicados
-  console.log('=== ANÁLISIS DE UBICACIONES ===');
-  console.log('Total ubicaciones originales:', ubicacionesOriginales.length);
-  console.log('Total ubicaciones únicas después de normalizar:', ubicacionesNormalizadas.size);
-  console.log('=== ANÁLISIS DE UBICACIONES ===');
-  console.log('🔍 FORZANDO APARICIÓN - Si ves esto, la consola funciona');
-  console.log('Total ubicaciones originales:', ubicacionesOriginales.length);
-  
-  // Agrupar ubicaciones originales por su versión normalizada
-  const gruposDuplicados = new Map();
-  ubicacionesOriginales.forEach(original => {
-    const norm = normalizarUbicacion(original);
-    if (!gruposDuplicados.has(norm)) {
-      gruposDuplicados.set(norm, []);
-    }
-    gruposDuplicados.get(norm).push(original);
-  });
-  
-  // Mostrar solo grupos con más de una variación
-  console.log('Ubicaciones con variaciones detectadas:');
-  gruposDuplicados.forEach((variaciones, normalizada) => {
-    if (variaciones.length > 1) {
-      // Eliminar duplicados exactos en las variaciones
-      const variacionesUnicas = [...new Set(variaciones)];
-      if (variacionesUnicas.length > 1) {
-        console.log(`📍 "${normalizada}" tiene ${variacionesUnicas.length} variaciones:`);
-        variacionesUnicas.forEach(v => console.log(`   - "${v}"`));
-      }
-    }
-  });
-  console.log('=================================');
-
   const contactosTiempo = { normal: {}, villas: {}, total: {} };
   data.forEach(c => {
     const fechaStr = c['Fecha'];
@@ -1038,10 +1006,12 @@ async function guardarCampaña() {
   };
 
   try {
+    const body = new URLSearchParams();
+    body.set('action', 'saveCampaign');
+    body.set('campaign', JSON.stringify(campaña.campaign));
     const response = await fetch(urlApi, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(campaña)
+      body
     });
     const result = await response.json();
     if (result.status !== 'success') {
